@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import PostCard from "@/components/PostCard"
-import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
 type Profile = {
@@ -29,16 +28,25 @@ type UserBadge = {
 
 type Badge = {
   id: string
+  key: string
   name: string
   icon: string
   description: string
+  rarity?: string
 }
-
 type Post = {
   id:string
   user_id:string
   content:string
   created_at:string
+  profiles?: {
+    username:string | null
+    avatar_url:string | null
+  } | null
+  post_cheers?: {
+    id:string
+  }[]
+  repost?: Post | null
 }
 
 export default function MyPage() {
@@ -229,7 +237,12 @@ const BADGE_ICON_MAP: Record<string, string> = {
   master: "👑",
 }
 
-const BADGE_DATA = {
+const BADGE_DATA: Record<string,{
+  name:string
+  icon:string
+  rarity:string
+  description:string
+}> = {
   first_write: { name: "初執筆", icon: "✍️", rarity: "Common", description: "はじめて執筆を完了した" },
   total_1000: { name: "千文字の壁", icon: "📝", rarity: "Common", description: "累計1000文字達成" },
   total_10000: { name: "駆け出し作家", icon: "📖", rarity: "Rare", description: "累計1万文字達成" },
@@ -288,7 +301,7 @@ const BADGE_DATA = {
   console.log("USER BADGES:", badges)
   console.log("ALL BADGES:", allBadges)
 
-setAllBadges(allBadges || [])
+  setAllBadges((allBadges || []) as Badge[])
 
       const { count: f1 } = await supabase
         .from("follows")
@@ -300,9 +313,9 @@ setAllBadges(allBadges || [])
         .select("*", { count: "exact", head: true })
         .eq("following_id", user.id)
 
-      setProfile(profile)
-      setLogs(logs || [])
-      setBadges(badges || [])
+        setProfile(profile as Profile | null)
+        setLogs((logs || []) as WritingLog[])
+        setBadges((badges || []) as UserBadge[])
       setFollowing(f1 || 0)
       setFollowers(f2 || 0)
       setEditName(profile?.username || "")
@@ -323,16 +336,22 @@ setAllBadges(allBadges || [])
     
     },[user])
 
-  const totalWords =
-    logs.reduce((sum, r) => sum + r.words, 0)
+    const totalWords =
+    logs.reduce(
+    (sum:number, r:WritingLog)=>sum+r.words,
+    0
+    )
 
-  const weeklyWords =
+    const weeklyWords =
     logs
-      .filter(l =>
-        new Date(l.created_at) >
-        new Date(Date.now() - 7 * 86400000)
-      )
-      .reduce((sum, r) => sum + r.words, 0)
+    .filter((l:WritingLog)=>
+    new Date(l.created_at) >
+    new Date(Date.now()-7*86400000)
+    )
+    .reduce(
+    (sum:number,r:WritingLog)=>sum+r.words,
+    0
+    )
 
   return (
     <div className="max-w-2xl mx-auto min-h-screen bg-gray-50">
