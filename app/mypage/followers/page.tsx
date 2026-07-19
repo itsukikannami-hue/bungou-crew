@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import type { User } from "@supabase/supabase-js"
+
 
 export default function FollowersPage() {
 
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [users, setUsers] = useState([])
 
 
