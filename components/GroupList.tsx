@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from "react"
 import { listGroups } from "@/lib/group"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface GroupListProps {
   userId: string
@@ -10,6 +12,7 @@ interface GroupListProps {
 
 export default function GroupList({ userId }: GroupListProps) {
   const [groups, setGroups] = useState<any[]>([])
+  const router = useRouter()
 
   useEffect(() => {
     if (!userId) return
@@ -17,10 +20,16 @@ export default function GroupList({ userId }: GroupListProps) {
   }, [userId])
 
   return (
-    <ul>
-      {groups.map(g => (
-        <li key={g.id}>{g.name}</li>
-      ))}
-    </ul>
+<ul>
+{groups.map(g => (
+  <div
+    key={g.id}
+    className="p-2 border mb-1 cursor-pointer"
+    onClick={() => router.push(`/group/${g.id}`)}
+  >
+    {g.name}
+  </div>
+))}
+</ul>
   )
 }

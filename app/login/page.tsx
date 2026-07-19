@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { FcGoogle } from "react-icons/fc"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -19,6 +20,21 @@ export default function LoginPage() {
     } else {
       // ログイン成功時はページリロード or ホームに遷移
       window.location.href = "/"
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setError("")
+  
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+  
+    if (error) {
+      setError(error.message)
     }
   }
 
@@ -52,6 +68,25 @@ export default function LoginPage() {
       >
         ログイン
       </button>
+
+      <div className="my-4 flex items-center">
+  <div className="flex-1 border-t"></div>
+
+  <span className="px-3 text-gray-500 text-sm">
+    または
+  </span>
+
+  <div className="flex-1 border-t"></div>
+</div>
+
+<button
+  onClick={handleGoogleLogin}
+  className="mb-4 flex w-full max-w-xs items-center justify-center gap-3 rounded border border-gray-300 bg-white px-6 py-3 hover:bg-gray-100"
+>
+  <FcGoogle size={22} />
+
+  Googleで続ける
+</button>
 
       {/* ここが追加部分 */}
       <div className="mt-2">

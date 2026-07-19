@@ -31,3 +31,51 @@ export default function FriendList({ user }) {
     </div>
   )
 }
+
+useEffect(()=>{
+
+  const channel = supabase
+   .channel("status")
+   .on(
+     "postgres_changes",
+     {
+       event:"UPDATE",
+       schema:"public",
+       table:"user_status"
+     },
+     payload=>{
+       const status = payload.new
+       console.log("状態更新",status)
+     }
+   )
+   .subscribe()
+ 
+  return ()=>{
+    supabase.removeChannel(channel)
+  }
+ 
+ },[])
+
+ useEffect(()=>{
+
+  const channel = supabase
+   .channel("status")
+   .on(
+     "postgres_changes",
+     {
+       event:"UPDATE",
+       schema:"public",
+       table:"user_status"
+     },
+     payload=>{
+       const status = payload.new
+       console.log("状態更新",status)
+     }
+   )
+   .subscribe()
+ 
+  return ()=>{
+    supabase.removeChannel(channel)
+  }
+ 
+ },[])

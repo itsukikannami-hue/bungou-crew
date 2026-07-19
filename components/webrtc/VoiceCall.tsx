@@ -1,4 +1,5 @@
 "use client"
+
 import { useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -11,84 +12,100 @@ interface VoiceCallProps {
 export default function VoiceCall({ userId, friendId, onEnd }: VoiceCallProps) {
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
+  const subscriptionRef = useRef<any>(null)
 
   useEffect(() => {
     let isMounted = true
 
     const startCall = async () => {
       try {
+        // 1️⃣ マイク取得
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        if (!isMounted) {
-          stream.getTracks().forEach(t => t.stop())
-          return
-        }
         localStreamRef.current = stream
 
+        // 2️⃣ PeerConnection作成
         const pc = new RTCPeerConnection()
         pcRef.current = pc
-
-        // ローカルストリームを追加
         stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
-        // ICE Candidate 送信
+        // ICE Candidate を送信
         pc.onicecandidate = e => {
           if (e.candidate) {
             supabase
               .from("webrtc_signaling")
-              .insert([{ from_user: userId, to_user: friendId, type: "candidate", candidate: e.candidate }])
+              .insert({
+                from_user: userId,
+                to_user: friendId,
+                candidate: JSON.stringify(e.candidate)
+              })
           }
         }
 
-        // Offer 作成 & Supabase に送信
+        // Offer作成
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
+
+        // SupabaseにOffer送信
         await supabase
           .from("webrtc_signaling")
-          .insert([{ from_user: userId, to_user: friendId, type: "offer", sdp: offer.sdp }])
+          .insert({
+            from_user: userId,
+            to_user: friendId,
+            offer: JSON.stringify(offer)
+          })
 
-        // Supabase で Answer を監視
-        const subscription = supabase
-          .from(`webrtc_signaling:to_user=eq.${userId}`)
-          .on("INSERT", payload => {
+        // Answerを待機
+        subscriptionRef.current = supabase
+          .channel("webrtc")
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "webrtc_signaling", filter: `from_user=eq.${friendId},to_user=eq.${userId}` }, payload => {
             const data = payload.new
-            if (data.type === "answer") {
-              const desc = { type: "answer", sdp: data.sdp } as RTCSessionDescriptionInit
-              pc.setRemoteDescription(desc)
-            } else if (data.type === "candidate") {
-              pc.addIceCandidate(data.candidate)
-            }
+            if (!data?.answer) return
+            const answer = JSON.parse(data.answer)
+            pc.setRemoteDescription(answer)
           })
           .subscribe()
-
-        return () => {
-          // Cleanup
-          subscription.unsubscribe()
-        }
       } catch (err) {
-        console.error("Failed to start call", err)
+        console.error(err)
+        endCall()
       }
+    }
+
+    const endCall = () => {
+      if (!isMounted) return
+      // マイク停止
+      localStreamRef.current?.getTracks().forEach(track => track.stop())
+      localStreamRef.current = null
+      // PeerConnection終了
+      pcRef.current?.close()
+      pcRef.current = null
+      // Supabaseサブスクリプション解除
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current)
+      }
+      onEnd()
     }
 
     startCall()
 
     return () => {
       isMounted = false
-
-      // ストリーム停止
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop())
-        localStreamRef.current = null
-      }
-
-      // PeerConnection を閉じる
-      if (pcRef.current) {
-        pcRef.current.close()
-        pcRef.current = null
-      }
-
-      onEnd()
+      endCall()
     }
   }, [userId, friendId, onEnd])
 
-  return null
+  return (
+    <div className="p-2 bg-green-100 rounded">
+      発信中…
+      <button
+        className="ml-2 px-2 py-1 bg-red-500 text-white rounded"
+        onClick={() => {
+          localStreamRef.current?.getTracks().forEach(track => track.stop())
+          pcRef.current?.close()
+          onEnd()
+        }}
+      >
+        終了
+      </button>
+    </div>
+  )
 }

@@ -1,4 +1,5 @@
 "use client"
+
 import { useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabaseClient"
 
@@ -10,68 +11,68 @@ interface VoiceReceiverProps {
 export default function VoiceReceiver({ userId, onAccept }: VoiceReceiverProps) {
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
-  const channelRef = useRef<any>(null)
+  const subscriptionRef = useRef<any>(null)
 
   useEffect(() => {
     let isMounted = true
 
-    const startListening = async () => {
-      // Realtime v2: channel を作る
-      const channel = supabase.channel(`webrtc_${userId}`)
-      channelRef.current = channel
-
-      channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'webrtc_signaling', filter: `to_user=eq.${userId}` }, async payload => {
-        if (!isMounted) return
-        const data = payload.new
-
-        if (data.type === "offer") {
-          // 通話を受ける
-          onAccept(data.from_user)
-
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          localStreamRef.current = stream
+    const listenIncoming = async () => {
+      subscriptionRef.current = supabase
+        .channel("webrtc")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "webrtc_signaling", filter: `to_user=eq.${userId}` }, async payload => {
+          const data = payload.new
+          if (!data?.offer || !isMounted) return
 
           const pc = new RTCPeerConnection()
           pcRef.current = pc
+
+          // 受信マイク取得
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          localStreamRef.current = stream
           stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
+          // ICE Candidate 送信
           pc.onicecandidate = e => {
             if (e.candidate) {
               supabase
                 .from("webrtc_signaling")
-                .insert([{ from_user: userId, to_user: data.from_user, type: "candidate", candidate: e.candidate }])
+                .insert({
+                  from_user: userId,
+                  to_user: data.from_user,
+                  candidate: JSON.stringify(e.candidate)
+                })
             }
           }
 
-          await pc.setRemoteDescription({ type: "offer", sdp: data.sdp })
+          // OfferをセットしてAnswer作成
+          const offer = JSON.parse(data.offer)
+          await pc.setRemoteDescription(offer)
           const answer = await pc.createAnswer()
           await pc.setLocalDescription(answer)
 
           await supabase
             .from("webrtc_signaling")
-            .insert([{ from_user: userId, to_user: data.from_user, type: "answer", sdp: answer.sdp }])
-        }
-      }).subscribe()
+            .insert({
+              from_user: userId,
+              to_user: data.from_user,
+              answer: JSON.stringify(answer)
+            })
+
+          onAccept(data.from_user)
+        })
+        .subscribe()
     }
 
-    startListening()
+    listenIncoming()
 
     return () => {
       isMounted = false
-
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop())
-        localStreamRef.current = null
-      }
-
-      if (pcRef.current) {
-        pcRef.current.close()
-        pcRef.current = null
-      }
-
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-      }
+      // マイク停止
+      localStreamRef.current?.getTracks().forEach(track => track.stop())
+      localStreamRef.current = null
+      pcRef.current?.close()
+      pcRef.current = null
+      if (subscriptionRef.current) supabase.removeChannel(subscriptionRef.current)
     }
   }, [userId, onAccept])
 

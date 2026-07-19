@@ -17,6 +17,15 @@ import VoiceReceiver from "@/components/webrtc/VoiceReceiver"
 import CallingStatus from "@/components/webrtc/CallingStatus"
 import GroupList from "@/components/GroupList"
 import { createGroup, addMember, listGroups } from "@/lib/group"
+import DMChat from "@/components/DMChat"
+import { updateStatus } from "@/lib/status"
+import GroupChat from "@/components/GroupChat"
+import NotificationList from "@/components/NotificationList"
+import WritingUsers from "@/components/WritingUsers"
+import ProfilePage from "@/components/profile/ProfilePage"
+import Link from "next/link"
+import HomeBungou from "@/components/HomeBungou"
+
 
 export default function Home() {
   const router = useRouter()
@@ -29,6 +38,7 @@ export default function Home() {
   const [showModal,setShowModal] = useState(false)
   const [showStopModal,setShowStopModal] = useState(false)
 
+  const [sessionDuration, setSessionDuration] = useState(0)
   // 通話関連
   const [friendIdToCall, setFriendIdToCall] = useState<string | null>(null)
   const [calling, setCalling] = useState(false)
@@ -50,6 +60,11 @@ export default function Home() {
     }
   }
 
+  useEffect(() => {
+    if (!user) return
+    updateStatus(user.id, "online")
+  }, [user])
+  
   useEffect(() => {
     const fetchGroups = async () => {
       if (!user) return
@@ -108,12 +123,34 @@ export default function Home() {
     fetchWeeklyData();
   }, [user])
 
+  // --- 執筆履歴データ取得 ---
+useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user) return;
+  
+      try {
+        const { data, error } = await supabase
+          .from("sessions")
+          .select("created_at,duration,words")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }); // 最新順
+  
+        if (error) throw error;
+  
+        if (data) setSessions(data);
+      } catch (err) {
+        console.error("セッション取得エラー:", err);
+      }
+    };
+  
+    fetchSessions();
+  }, [user]);
+
   return (
     <>
       <Header/>
 
       <main className="min-h-screen flex flex-col items-center bg-gray-50 p-6 space-y-6">
-        <h1 className="text-3xl font-bold">ブンゴウクルー</h1>
 
         {/* フレンド検索 */}
         <FriendSearch user={user} onCall={(friendId: string) => { setFriendIdToCall(friendId); setCalling(true) }}/>
@@ -137,28 +174,88 @@ export default function Home() {
             </button>
           </div>
           {/* グループ一覧 */}
-          <GroupList userId={user?.id} />
+          {groups.map(g => (
+  <Link key={g.id} href={`/group/${g.id}`}>
+    <div className="p-2 border mb-1 cursor-pointer hover:bg-gray-100 transition">
+      {g.name}
+    </div>
+  </Link>
+))}
         </div>
 
         {/* ペット */}
-        <BungouPet/>
+        <HomeBungou />
+<Link href="/album">
+  <button>
+    📚 アルバム
+  </button>
+</Link>
 
-        {/* タイマー */}
-        <Timer
-          todayTime={todayTime}
-          setTodayTime={setTodayTime}
-          setShowModal={setShowModal}
-          setShowStopModal={setShowStopModal}
-        />
+<Link href="/data">
+  <button>
+    📊 データ
+  </button>
+</Link>
 
-        {/* 週間チャート */}
-        <WeeklyCharts weeklyTime={weeklyTime} weeklyWords={weeklyWords} />
+<Link href="/mypage">
+    <button className="px-4 py-2 bg-purple-500 text-white rounded-lg">
+      👤 マイページ
+    </button>
+  </Link>
 
-        {/* 執筆履歴 */}
-        <SessionHistory sessions={sessions} />
+  <Link href="/timeline">
+  <button
+    className="
+      w-full
+      max-w-md
+      bg-green-500
+      text-white
+      py-3
+      rounded-xl
+      shadow
+      hover:bg-green-600
+    "
+  >
+    📝 タイムライン
+  </button>
+</Link>
+
+<Link href="/search">
+  <button
+    className="
+      w-full
+      max-w-md
+      bg-purple-500
+      text-white
+      py-3
+      rounded-xl
+      shadow
+      hover:bg-purple-600
+    "
+  >
+    🔍 検索
+  </button>
+</Link>
+
+        {user && friendIdToCall && (
+  <DMChat
+    userId={user.id}
+    friendId={friendIdToCall}
+  />
+)}
+
+
+{user && <NotificationList userId={user.id} />}
+
 
         {/* モーダル */}
-        {showModal && <SessionModal setShowModal={setShowModal} />}
+        {showModal && (
+  <SessionModal
+    user={user}
+    duration={sessionDuration}
+    setShowModal={setShowModal}
+  />
+)}
         {showStopModal && <StopModal setShowStopModal={setShowStopModal} setShowModal={setShowModal} />}
 
         {/* 発信側 */}
