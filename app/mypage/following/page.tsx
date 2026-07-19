@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import type { User } from "@supabase/supabase-js"
+
+type Profile = {
+  user_id: string
+  username: string
+  bio: string | null
+  avatar_url: string | null
+}
+
 
 export default function FollowingPage() {
 
-  const [user, setUser] = useState(null)
-  const [users, setUsers] = useState([])
+  const [user, setUser] = useState<User | null>(null)
+  const [users, setUsers] = useState<Profile[]>([])
 
 
   useEffect(() => {
@@ -17,7 +26,7 @@ export default function FollowingPage() {
 
 
 
-  const fetchFollowing = async () => {
+  const fetchFollowing = async (): Promise<void> => {
 
     const { data: auth } = await supabase.auth.getUser()
 
@@ -50,15 +59,18 @@ export default function FollowingPage() {
     }
 
 
-    const profileList = data.map(item => item.profiles)
-
-    setUsers(profileList)
+    const profileList = data
+    .map(item => item.profiles)
+    .filter(Boolean)
+    .flat() as Profile[]
+  
+  setUsers(profileList)
 
   }
 
 
 
-  const unfollow = async (targetId) => {
+  const unfollow = async (targetId: string): Promise<void> => {
 
 
     if (!user) return
