@@ -4,12 +4,48 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import PostCard from "@/components/PostCard"
 import Link from "next/link"
+import type { User } from "@supabase/supabase-js"
+
+type Profile = {
+  user_id: string
+  username: string | null
+  bio: string | null
+  avatar_url: string | null
+  website: string | null
+  invite_code: string | null
+}
+
+type WritingLog = {
+  id: string
+  words: number
+  created_at: string
+}
+
+type UserBadge = {
+  id: string
+  badge_id: string
+  user_id: string
+}
+
+type Badge = {
+  id: string
+  name: string
+  icon: string
+  description: string
+}
+
+type Post = {
+  id:string
+  user_id:string
+  content:string
+  created_at:string
+}
 
 export default function MyPage() {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [logs, setLogs] = useState([])
-  const [badges, setBadges] = useState([])
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [logs, setLogs] = useState<WritingLog[]>([])
+  const [badges, setBadges] = useState<UserBadge[]>([])
   const [following, setFollowing] = useState(0)
   const [followers, setFollowers] = useState(0)
 
@@ -20,10 +56,10 @@ export default function MyPage() {
  const [editBio, setEditBio] = useState("")
  const [editAvatar, setEditAvatar] = useState("")
  const [editLink, setEditLink] = useState("")
- const [allBadges, setAllBadges] = useState([])
+ const [allBadges, setAllBadges] = useState<Badge[]>([])
 
  const [content, setContent] = useState("")
- const [posts, setPosts] = useState([])
+ const [posts,setPosts] = useState<Post[]>([])
 
  const extractHashtags = (text:string)=>{
 
@@ -159,13 +195,13 @@ return
       return
       }
       
-      setPosts(data ?? [])
+      setPosts((data ?? []) as Post[])
       
       }
 
 
 
-const deletePost = async (id) => {
+      const deletePost = async (id:string) => {
   if (!user) return
 
   const { error } = await supabase
