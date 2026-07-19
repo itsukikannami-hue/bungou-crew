@@ -8,7 +8,15 @@ import type { User } from "@supabase/supabase-js"
 export default function FollowersPage() {
 
   const [user, setUser] = useState<User | null>(null)
-  const [users, setUsers] = useState([])
+
+  type Profile = {
+    user_id: string
+    username: string
+    bio: string | null
+    avatar_url: string | null
+  }
+
+  const [users, setUsers] = useState<Profile[]>([])
 
 
   useEffect(() => {
@@ -52,7 +60,7 @@ export default function FollowersPage() {
     }
 
 
-    const profileList = data.map(item => item.profiles)
+    const profileList = data.map(item => item.profiles).flat()
 
     setUsers(profileList)
 
