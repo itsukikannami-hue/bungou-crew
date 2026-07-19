@@ -23,8 +23,8 @@ type WritingLog = {
 
 type UserBadge = {
   id: string
-  badge_id: string
   user_id: string
+  badge_key: string
 }
 
 type Badge = {
