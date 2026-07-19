@@ -27,7 +27,7 @@ export default function FollowersPage() {
 
 
 
-  const fetchFollowers = async () => {
+  const fetchFollowers = async (): Promise<void> => {
 
     const { data: auth } = await supabase.auth.getUser()
 
@@ -60,15 +60,18 @@ export default function FollowersPage() {
     }
 
 
-    const profileList = data.map(item => item.profiles).flat()
-
-    setUsers(profileList)
+    const profileList = data
+    .map(item => item.profiles)
+    .filter(Boolean)
+    .flat() as Profile[]
+  
+  setUsers(profileList)
 
   }
 
 
 
-  const removeFollower = async (targetId) => {
+  const removeFollower = async (targetId: string) => {
 
     if (!user) return
 
