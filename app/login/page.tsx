@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { FcGoogle } from "react-icons/fc"
+import { FaXTwitter } from "react-icons/fa6"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -28,6 +29,21 @@ export default function LoginPage() {
   
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+  
+    if (error) {
+      setError(error.message)
+    }
+  }
+
+  const handleXLogin = async () => {
+    setError("")
+  
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "twitter",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -86,6 +102,28 @@ export default function LoginPage() {
   <FcGoogle size={22} />
 
   Googleで続ける
+</button>
+
+<button
+  onClick={handleXLogin}
+  className="
+  mb-4
+  flex
+  w-full
+  max-w-xs
+  items-center
+  justify-center
+  gap-3
+  rounded
+  bg-black
+  px-6
+  py-3
+  text-white
+  hover:bg-gray-800
+  "
+>
+  <FaXTwitter />
+  Xで続ける
 </button>
 
       {/* ここが追加部分 */}
