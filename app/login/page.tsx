@@ -106,23 +106,8 @@ export default function LoginPage() {
 
 <button
   onClick={handleXLogin}
-  className="
-  mb-4
-  flex
-  w-full
-  max-w-xs
-  items-center
-  justify-center
-  gap-3
-  rounded
-  bg-black
-  px-6
-  py-3
-  text-white
-  hover:bg-gray-800
-  "
+  className="mb-4 flex w-full max-w-xs items-center justify-center gap-3 rounded border border-gray-300 bg-white px-6 py-3 hover:bg-gray-100"
 >
-  <FaXTwitter />
   Xで続ける
 </button>
 
