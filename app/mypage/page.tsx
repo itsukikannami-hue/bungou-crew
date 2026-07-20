@@ -329,13 +329,12 @@ const BADGE_DATA: Record<string,{
 
   }, [])
 
-  useEffect(()=>{
-
-    if(user){
-      fetchPosts()
-    }
-    
-    },[user])
+  useEffect(() => {
+    if (!user) return
+  
+    fetchPosts()
+  
+  }, [user])
 
     const totalWords =
     logs.reduce(
@@ -391,7 +390,7 @@ const BADGE_DATA: Record<string,{
                 className="w-full text-left px-4 py-2 hover:bg-gray-100"
                 onClick={() => {
                   setMenuOpen(false)
-                  location.href = "/mypage/privacy"
+                  window.location.href = "/mypage/privacy"
                 }}
               >
                 🔒 公開範囲設定
@@ -401,8 +400,8 @@ const BADGE_DATA: Record<string,{
                 className="w-full text-left px-4 py-2 hover:bg-gray-100"
                 onClick={() => {
                   setMenuOpen(false)
-                  if (profile?.invite_code) {
-                    navigator.clipboard.writeText(profile.invite_code)
+                  if (navigator.clipboard && profile?.invite_code) {
+                    await navigator.clipboard.writeText(profile.invite_code)
                     alert("招待コードをコピーしました")
                   }
                 }}
@@ -414,7 +413,7 @@ const BADGE_DATA: Record<string,{
                 className="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100"
                 onClick={async () => {
                   await supabase.auth.signOut()
-                  location.href = "/login"
+                  window.location.href = "/login"
                 }}
               >
                 🚪 ログアウト
@@ -587,7 +586,8 @@ const BADGE_DATA: Record<string,{
   onChange={async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-  
+    if (!user) return
+    
     const filePath = `${user.id}/${Date.now()}`
   
     // ① 1回だけアップロードする
