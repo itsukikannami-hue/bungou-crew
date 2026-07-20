@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import PostCard from "@/components/PostCard"
 import type { User } from "@supabase/supabase-js"
