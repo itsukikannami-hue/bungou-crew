@@ -9,10 +9,24 @@ interface Props {
   groupId: string
 }
 
+type Message = {
+  id: string
+  group_id: string
+  sender_id: string
+  content: string
+  created_at: string
+}
+
+type Member = {
+  id: string
+  user_id: string
+  group_id: string
+}
+
 export default function GroupChat({ groupId }: Props) {
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState("")
   const [stream, setStream] = useState<MediaStream | null>(null)
 
@@ -21,7 +35,7 @@ export default function GroupChat({ groupId }: Props) {
   const [isMuted, setIsMuted] = useState(false)
 
   // 👇 通話参加者
-  const [members, setMembers] = useState<any[]>([])
+  const [members, setMembers] = useState<Member[]>([])
 
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -84,7 +98,9 @@ export default function GroupChat({ groupId }: Props) {
     }
   }
   const handleOffer = async (data: any) => {
-    const peer = createPeer(data.from_user, stream!)
+    if (!stream) return
+
+    const peer = createPeer(data.from_user, stream)
     peers.current[data.from_user] = peer
   
     await peer.setRemoteDescription(data.offer)
@@ -116,7 +132,7 @@ export default function GroupChat({ groupId }: Props) {
           table: "signals"
         },
         async (payload) => {
-          const data = payload.new
+          const data = payload.new as any
   
           if (data.to_user !== userId) return
   
@@ -137,15 +153,17 @@ export default function GroupChat({ groupId }: Props) {
       )
       .subscribe()
   
-    return () => supabase.removeChannel(channel)
+      return () => {
+        void supabase.removeChannel(channel)
+      }
   }, [userId, stream])
 
-  const connectToAll = async () => {
-    if (!stream || !members.length) return
+  const connectToAll = async (media: MediaStream) => {
+    if (!members.length) return
   
     for (const m of members) {
       if (m.user_id === userId) continue
-      await callUser(m.user_id, stream)
+      await callUser(m.user_id, media)
     }
   }
   // 👤 ユーザー取得
@@ -163,7 +181,7 @@ export default function GroupChat({ groupId }: Props) {
 
     const fetch = async () => {
       const data = await getGroupMessages(groupId)
-      setMessages(data || [])
+      setMessages((data ?? []) as Message[])
     }
 
     fetch()
@@ -183,7 +201,7 @@ export default function GroupChat({ groupId }: Props) {
           table: "messages"
         },
         (payload) => {
-          const m = payload.new
+          const m = payload.new as Message
 
           if (m.group_id === groupId) {
             setMessages(prev => {
@@ -196,7 +214,9 @@ export default function GroupChat({ groupId }: Props) {
       )
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+      return () => {
+        void supabase.removeChannel(channel)
+      }
   }, [groupId])
 
   // 📤 送信
@@ -209,16 +229,20 @@ export default function GroupChat({ groupId }: Props) {
   // 🎤 通話参加
   const joinCall = async () => {
     if (!userId || !groupId) return
-
+  
     await supabase.from("group_call_members").insert({
       group_id: groupId,
       user_id: userId
     })
-
-    const media = await navigator.mediaDevices.getUserMedia({ audio: true })
+  
+    const media = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    })
+  
     setStream(media)
-
     setInCall(true)
+  
+    await connectToAll(media)
   }
 
   // 📞 通話開始
@@ -245,13 +269,11 @@ export default function GroupChat({ groupId }: Props) {
       room.on("trackSubscribed", (track, publication, participant) => {
   
         const audio = new Audio()
-  
-        // LiveKitの正しい形
+
         audio.srcObject = new MediaStream([track.mediaStreamTrack])
-  
+        
         audio.autoplay = true
-        audio.playsInline = true
-  
+        
         audio.play().catch((e) => {
           console.log("autoplay blocked:", e)
         })
@@ -318,15 +340,18 @@ export default function GroupChat({ groupId }: Props) {
           table: "group_calls"
         },
         (payload) => {
-          const call = payload.new
+          const call = payload.new as { group_id: string }
+  
           if (call.group_id === groupId) {
-            joinCall()
+            void joinCall()
           }
         }
       )
       .subscribe()
-
-    return () => supabase.removeChannel(channel)
+  
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [groupId])
 
   // 👥 メンバー監視
@@ -339,7 +364,7 @@ export default function GroupChat({ groupId }: Props) {
         .select("*")
         .eq("group_id", groupId)
 
-      setMembers(data || [])
+        setMembers((data ?? []) as Member[])
     }
 
     fetchMembers()
@@ -357,7 +382,9 @@ export default function GroupChat({ groupId }: Props) {
       )
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+      return () => {
+        void supabase.removeChannel(channel)
+      }
   }, [groupId])
 
   // スクロール

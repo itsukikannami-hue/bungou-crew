@@ -9,25 +9,69 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import Link from "next/link"
 import { createNotification } from "@/lib/notification"
+import Image from "next/image"
+
+import type { User } from "@supabase/supabase-js"
+
+
+
+type Comment = {
+  id: string
+  content: string
+}
+
+type Post = {
+  id: string
+  user_id: string
+  content: string | null
+  created_at: string
+
+  profiles?: {
+    username: string | null
+    avatar_url: string | null
+  } | null
+
+  post_cheers?: {
+    id: string
+  }[]
+
+  repost?: {
+    id: string
+    content: string | null
+
+    profiles?: {
+      username: string | null
+      avatar_url: string | null
+    } | null
+
+    post_cheers?: {
+      id: string
+    }[]
+  } | null
+}
+
+type PostCardProps = {
+  post: Post
+  user: User | null
+  deletePost?: (id: string) => void
+}
 
 export default function PostCard({
-    post,
-    user,
-    deletePost,
-  }: any) {
+  post,
+  user,
+  deletePost,
+}: PostCardProps) {
+
 const [myCheers,setMyCheers] = useState<string[]>([])
 
-const [comments,setComments] =
-useState<any[]>([])
+const [comments, setComments] = useState<Comment[]>([])
 
-const [commentText,setCommentText] =
-useState("")
+const [commentText, setCommentText] = useState<string>("")
 
 const [openComments,setOpenComments] =
 useState(false)
 
-const [openPostMenu,setOpenPostMenu] =
-useState(false)
+const [openPostMenu, setOpenPostMenu] = useState<string | null>(null)
 
 const [openRepostMenu,setOpenRepostMenu] =
 useState(false)
@@ -35,8 +79,7 @@ useState(false)
 const [showQuote,setShowQuote] =
 useState(false)
 
-const [quoteText,setQuoteText] =
-useState("")
+const [quoteText, setQuoteText] = useState<string>("")
 
 const profileUrl =
 post.user_id === user?.id
@@ -61,9 +104,7 @@ const fetchMyCheers = async()=>{
     
     
     setMyCheers(
-    data?.map(
-    item=>item.post_id
-    ) ?? []
+      data?.map((item: { post_id: string }) => item.post_id) ?? []
     )
     
     }
@@ -141,7 +182,7 @@ const fetchMyCheers = async()=>{
             }
             
             
-            setComments(data ?? [])
+            setComments((data ?? []) as Comment[])
             
             }
 
@@ -247,11 +288,9 @@ const fetchMyCheers = async()=>{
                       
                       }
 
-  useEffect(()=>{
-
-    fetchMyCheers()
-    
-    },[user])
+                      useEffect(() => {
+                        void fetchMyCheers()
+                      }, [user])
 
 
     return (
@@ -272,12 +311,15 @@ const fetchMyCheers = async()=>{
       
             {openPostMenu === post.id && (
               <div className="absolute right-0 mt-2 w-32 bg-white border rounded-lg shadow-lg z-50">
-                {post.user_id === user?.id && (
+{post.user_id === user?.id && deletePost && (
                   <button
                     className="w-full px-4 py-2 text-left text-red-500"
                     onClick={() => {
                       setOpenPostMenu(null)
-                      deletePost(post.id)
+                    
+                      if (deletePost) {
+                        deletePost(post.id)
+                      }
                     }}
                   >
                     🗑 削除
@@ -292,9 +334,12 @@ const fetchMyCheers = async()=>{
 <div className="flex items-center gap-3 mb-3">
 
 <Link href={profileUrl}>
-<img
-src={post.profiles?.avatar_url || "/default.png"}
-className="w-10 h-10 rounded-full object-cover border cursor-pointer"
+<Image
+  src={post.profiles?.avatar_url ?? "/default.png"}
+  alt="avatar"
+  width={40}
+  height={40}
+  className="rounded-full object-cover border cursor-pointer"
 />
 </Link>
 
@@ -302,7 +347,7 @@ className="w-10 h-10 rounded-full object-cover border cursor-pointer"
 href={profileUrl}
 className="font-bold hover:underline ml-3"
 >
-{post.profiles?.username}
+{post.profiles?.username ?? "名無し"}
 </Link>
 
 
@@ -313,7 +358,7 @@ className="font-bold hover:underline ml-3"
           <div className="whitespace-pre-wrap">
 
 {
-post.content.split(/(\s+)/).map(
+(post.content ?? "").split(/(\s+)/).map(
 (text,index)=>{
 
 
@@ -327,7 +372,7 @@ key={index}
 className="text-blue-500 cursor-pointer"
 onClick={()=>{
 
-location.href=
+  window.location.href=
 `/timeline?tag=${text.substring(1)}`
 
 }}
@@ -410,7 +455,7 @@ bg-gray-50
 
 
 <div>
-{post.repost.content}
+{post.repost.content ?? ""}
 </div>
 
 
@@ -524,7 +569,7 @@ setOpenRepostMenu(false)
           {openComments && (
             <div className="mt-3 border-t pt-3">
       
-              {comments.map((comment: any) => (
+              {comments.map(comment => (
                 <div
                   key={comment.id}
                   className="text-sm mb-2"

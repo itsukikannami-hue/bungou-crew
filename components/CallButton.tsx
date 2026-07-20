@@ -2,7 +2,15 @@
 
 import { useState } from "react"
 
-export default function CallButton({ friendId, friendName }) {
+type CallButtonProps = {
+  friendId: string
+  friendName: string
+}
+
+export default function CallButton({
+  friendId,
+  friendName
+}: CallButtonProps) {
   const [calling, setCalling] = useState(false)
 
   const startCall = async () => {

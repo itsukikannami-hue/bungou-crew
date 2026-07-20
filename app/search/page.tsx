@@ -4,12 +4,40 @@ import {useState,useEffect} from "react"
 import {supabase} from "@/lib/supabaseClient"
 import Link from "next/link"
 
+type Hashtag = {
+    name: string
+  }
+  
+  type Post = {
+    id: string
+    content: string
+    created_at: string
+  
+    profiles?: {
+      username: string | null
+      avatar_url: string | null
+    } | null
+  
+    hashtags?: Hashtag[] | Hashtag | null
+  }
+
+  type UserProfile = {
+    id: string
+    user_id: string
+    username: string | null
+    avatar_url: string | null
+  }
+  type Tag = {
+    id: string
+    name: string
+  }
+
 export default function SearchPage(){
 
 const [keyword,setKeyword]=useState("")
-const [users,setUsers]=useState([])
-const [posts,setPosts]=useState([])
-const [tags,setTags]=useState([])
+const [users, setUsers] = useState<UserProfile[]>([])
+const [posts,setPosts]=useState<Post[]>([])
+const [tags,setTags]=useState<Tag[]>([])
 const [trendTags,setTrendTags]=useState<[string, number][]>([])
 
 const fetchTrendTags = async()=>{
@@ -45,12 +73,12 @@ const fetchTrendTags = async()=>{
     
     
     
-    data?.forEach(item=>{
+    data?.forEach((item:any)=>{
 
         const name =
         Array.isArray(item.hashtags)
-        ? item.hashtags[0]?.name
-        : item.hashtags?.name
+          ? item.hashtags[0]?.name
+          : (item.hashtags as { name:string } | null)?.name
         
         
         if(!name)return
@@ -200,7 +228,7 @@ useEffect(()=>{
         
         
         {
-        trendTags.map(tag=>(
+trendTags.map((tag:[string, number])=>(
         
         <div
         
@@ -208,8 +236,8 @@ useEffect(()=>{
         
         onClick={()=>{
         
-        location.href=
-        `/timeline?tag=${tag[0]}`
+            window.location.href =
+            `/timeline?tag=${tag[0]}`
         
         }}
         
@@ -273,40 +301,24 @@ useEffect(()=>{
         
         
         {
-        posts.map(post=>(
-        
+posts.map(post=>(
 <Link
-href={`/profile/${post.user_id}`}
-key={post.id}
-className="
-block
-border
-p-3
-rounded-xl
-mt-2
-hover:bg-gray-50
-"
+  key={post.id}
+  href={`/post/${post.id}`}
+  className="border p-3 rounded-xl mt-2 block"
 >
-        
-        <div className="font-bold">
-        
-        {post.profiles?.username}
-        
-        </div>
-        
-        
-        <div>
-        
-        {post.content}
-        
-        </div>
-        
-        
-        </Link>
-        
-        
-        ))
-        }
+
+<div className="font-bold">
+  {post.profiles?.username}
+</div>
+
+<div>
+  {post.content}
+</div>
+
+</Link>
+))
+}
         
         
         
@@ -327,8 +339,8 @@ hover:bg-gray-50
         
         onClick={()=>{
         
-        location.href=
-        `/timeline?tag=${tag.name}`
+            window.location.href =
+            `/timeline?tag=${tag.name}`
         
         }}
         

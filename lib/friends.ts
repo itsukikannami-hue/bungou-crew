@@ -8,8 +8,14 @@ export const getFriends = async (userId: string) => {
       requester_id,
       addressee_id,
       status,
-      requester:profiles!requester_id(username),
-      addressee:profiles!addressee_id(username)
+      requester:profiles!requester_id(
+        username,
+        avatar_url
+      ),
+      addressee:profiles!addressee_id(
+        username,
+        avatar_url
+      )
     `)
     .eq("status", "accepted")
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
@@ -20,14 +26,29 @@ export const getFriends = async (userId: string) => {
   }
 
   // ログインユーザー以外をフレンドとして返す
-  return data.map(f => ({
+  return data.map((f: any) => ({
     id: f.id,
-    username: f.requester_id === userId ? f.addressee.username : f.requester.username,
-    userId: f.requester_id === userId ? f.addressee_id : f.requester_id
+    user_id:
+      f.requester_id === userId
+        ? f.addressee_id
+        : f.requester_id,
+  
+    username:
+      f.requester_id === userId
+        ? f.addressee?.username ?? null
+        : f.requester?.username ?? null,
+  
+    avatar_url:
+      f.requester_id === userId
+        ? f.addressee?.avatar_url ?? null
+        : f.requester?.avatar_url ?? null,
   }))
 }
 
-export async function sendFriendRequest(userId, targetUserId){
+export async function sendFriendRequest(
+  userId: string,
+  targetUserId: string
+){
 
     const { data, error } = await supabase
     .from("friends")
@@ -43,7 +64,7 @@ export async function sendFriendRequest(userId, targetUserId){
     return data
   }
 
-  export async function getFriendRequests(userId){
+  export async function getFriendRequests(userId: string){
 
     const { data, error } = await supabase
     .from("friends")
@@ -58,7 +79,7 @@ export async function sendFriendRequest(userId, targetUserId){
     return data
   }
 
-  export async function acceptFriendRequest(requestId){
+  export async function acceptFriendRequest(requestId: string){
 
     const { data, error } = await supabase
     .from("friends")
@@ -72,17 +93,3 @@ export async function sendFriendRequest(userId, targetUserId){
     return data
   }
 
-  export async function getFriends(userId){
-
-    const { data, error } = await supabase
-    .from("friends")
-    .select("*")
-    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-    .eq("status","accepted")
-  
-    if(error){
-      console.error(error)
-    }
-  
-    return data
-  }

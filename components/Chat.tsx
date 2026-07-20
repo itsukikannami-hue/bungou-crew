@@ -1,23 +1,88 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabaseClient"
 
-export default function Chat({ messages, onSend }) {
+type ChatProps = {
+  messages: {
+    id:string
+    user_id:string
+    content:string
+    created_at:string
+  }[]
+
+  setMessages: React.Dispatch<
+    React.SetStateAction<{
+      id:string
+      user_id:string
+      content:string
+      created_at:string
+    }[]>
+  >
+
+  onSend:(text:string)=>void
+}
+
+export default function Chat({
+  messages,
+  setMessages,
+  onSend
+}: ChatProps) {
 
   const [text,setText] = useState("")
 
-  return (
-    <div className="w-full max-w-md">
 
+  useEffect(()=>{
+
+    const channel = supabase
+      .channel("messages")
+      .on(
+        "postgres_changes",
+        {
+          event:"INSERT",
+          schema:"public",
+          table:"messages"
+        },
+        (payload)=>{
+
+          setMessages(prev => [
+            ...prev,
+            payload.new as {
+              id:string
+              user_id:string
+              content:string
+              created_at:string
+             }
+          ])
+
+        }
+      )
+      .subscribe()
+
+
+    return ()=>{
+      supabase.removeChannel(channel)
+    }
+
+
+  },[setMessages])
+
+
+  return (
+    <div>
       <div className="h-64 overflow-y-scroll border p-2">
+
         {messages.map((m,i)=>(
           <div key={i} className="text-sm mb-1">
             {m.content}
           </div>
         ))}
+
       </div>
 
+
       <div className="flex mt-2">
+
         <input
           className="flex-1 border p-2"
           value={text}
@@ -33,31 +98,9 @@ export default function Chat({ messages, onSend }) {
         >
           送信
         </button>
-      </div>
 
+      </div>
     </div>
   )
+
 }
-
-useEffect(()=>{
-
-    const channel = supabase
-     .channel("messages")
-     .on(
-       "postgres_changes",
-       {
-         event:"INSERT",
-         schema:"public",
-         table:"messages"
-       },
-       (payload)=>{
-         setMessages(prev => [...prev, payload.new])
-       }
-     )
-     .subscribe()
-   
-    return ()=>{
-      supabase.removeChannel(channel)
-    }
-   
-   },[])

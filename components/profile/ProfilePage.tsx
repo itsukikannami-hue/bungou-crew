@@ -93,15 +93,21 @@ export default function ProfilePage() {
   if (!profile) return <div>プロフィール読み込み中...</div>;
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      {/* プロフィール表示 */}
-      <ProfileHeader username={username} bio={bio} avatarUrl={avatarUrl} />
-
+    <div className="max-w-3xl mx-auto p-4">
+  
       {!editMode && (
         <>
+          <ProfileHeader
+            username={username}
+            bio={bio}
+            avatarUrl={avatarUrl}
+            totalWords={totalWords}
+            totalDuration={totalDuration}
+          />
+  
           <NovelLinks links={novelLinks} />
           <SocialLinks links={socialLinks} />
-
+  
           <button
             onClick={() => setEditMode(true)}
             className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
@@ -110,7 +116,7 @@ export default function ProfilePage() {
           </button>
         </>
       )}
-
+  
       {editMode && (
         <>
           <ProfileEditor
@@ -121,10 +127,17 @@ export default function ProfilePage() {
             avatarUrl={avatarUrl}
             setAvatarUrl={setAvatarUrl}
           />
-
-          <NovelLinksEditor links={novelLinks} setLinks={setNovelLinks} />
-          <SocialLinksEditor links={socialLinks} setLinks={setSocialLinks} />
-
+  
+          <NovelLinksEditor
+            links={novelLinks}
+            setLinks={setNovelLinks}
+          />
+  
+          <SocialLinksEditor
+            links={socialLinks}
+            setLinks={setSocialLinks}
+          />
+  
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleSave}
@@ -132,7 +145,7 @@ export default function ProfilePage() {
             >
               保存
             </button>
-
+  
             <button
               onClick={() => setEditMode(false)}
               className="bg-gray-400 text-white px-6 py-2 rounded"
@@ -142,6 +155,7 @@ export default function ProfilePage() {
           </div>
         </>
       )}
+  
     </div>
-  );
+  )
 }
