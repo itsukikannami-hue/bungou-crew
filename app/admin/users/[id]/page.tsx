@@ -79,44 +79,60 @@ const [pointMessage, setPointMessage] =
   const fetchPoints = async () => {
     if (!userId) return
   
-    console.log("① 対象ユーザーID:", userId)
-  
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-  
-    console.log("② 現在ログイン中のユーザー:", user?.id)
-    console.log("③ Authエラー:", authError)
+    console.log("① FETCH POINTS START")
+    console.log("② FETCH POINTS USER ID:", userId)
   
     const {
       data,
       error,
+      count,
+      status,
+      statusText,
     } = await supabase
       .from("user_points")
-      .select("user_id, points")
+      .select("user_id, points", {
+        count: "exact",
+      })
       .eq("user_id", userId)
-      .maybeSingle()
   
-    console.log("④ user_points取得結果:", {
-      data,
+    console.log("③ FETCH POINTS RAW RESULT:", {
       error,
+      data,
+      count,
+      status,
+      statusText,
     })
   
     if (error) {
       console.error(
-        "⑤ ポイント取得エラー:",
+        "④ FETCH POINTS ERROR:",
         error
       )
       return
     }
   
+    if (!data || data.length === 0) {
+      console.log(
+        "⑤ user_pointsに該当データがありません"
+      )
+  
+      setPoints(0)
+      return
+    }
+  
+    const userPoints = data[0].points ?? 0
+  
     console.log(
-      "⑥ 取得ポイント:",
-      data?.points
+      "⑥ 取得したポイント:",
+      userPoints
     )
   
-    setPoints(data?.points ?? 0)
+    setPoints(userPoints)
+  
+    console.log(
+      "⑦ setPoints実行:",
+      userPoints
+    )
   }
   const handlePointSubmit = async () => {
     setPointError("")
