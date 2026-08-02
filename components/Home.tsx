@@ -152,36 +152,6 @@ useEffect(() => {
 
       <main className="min-h-screen flex flex-col items-center bg-gray-50 p-6 space-y-6">
 
-        {/* フレンド検索 */}
-        <FriendSearch user={user} onCall={(friendId: string) => { setFriendIdToCall(friendId); setCalling(true) }}/>
-
-        {/* グループ作成 */}
-        <div className="w-full max-w-md">
-          <h2 className="text-xl font-bold mb-2">グループ作成</h2>
-          <div className="flex mb-4">
-            <input
-              type="text"
-              placeholder="新しいグループ名"
-              value={newGroupName}
-              onChange={e => setNewGroupName(e.target.value)}
-              className="flex-1 p-2 border rounded-l"
-            />
-            <button
-              onClick={handleCreateGroup}
-              className="p-2 bg-blue-500 text-white rounded-r"
-            >
-              作成
-            </button>
-          </div>
-          {/* グループ一覧 */}
-          {groups.map(g => (
-  <Link key={g.id} href={`/group/${g.id}`}>
-    <div className="p-2 border mb-1 cursor-pointer hover:bg-gray-100 transition">
-      {g.name}
-    </div>
-  </Link>
-))}
-        </div>
 
         {/* ペット */}
         <HomeBungou />
