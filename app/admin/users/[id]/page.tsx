@@ -79,6 +79,8 @@ const [pointMessage, setPointMessage] =
   const fetchPoints = async () => {
     if (!userId) return
   
+    console.log("FETCH POINTS USER ID:", userId)
+  
     const {
       data,
       error,
@@ -87,6 +89,11 @@ const [pointMessage, setPointMessage] =
       .select("points")
       .eq("user_id", userId)
       .maybeSingle()
+  
+    console.log("FETCH POINTS RESULT:", {
+      data,
+      error,
+    })
   
     if (error) {
       console.error(
