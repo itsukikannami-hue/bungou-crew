@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabaseServer"
+import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 export async function POST(request: Request) {
   try {
@@ -151,16 +152,16 @@ export async function POST(request: Request) {
 
     // ポイント履歴を追加
     const {
-      error: insertError,
-    } = await supabase
-      .from("point_transactions")
-      .insert({
-        user_id: userId,
-        amount: finalAmount,
-        type,
-        description: description.trim(),
-        created_by: user.id,
-      })
+        error: insertError,
+      } = await supabaseAdmin
+        .from("point_transactions")
+        .insert({
+          user_id: userId,
+          amount: finalAmount,
+          type,
+          description: description.trim(),
+          created_by: user.id,
+        })
 
       if (insertError) {
         console.error(
