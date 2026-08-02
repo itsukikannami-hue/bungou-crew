@@ -79,31 +79,41 @@ const [pointMessage, setPointMessage] =
   const fetchPoints = async () => {
     if (!userId) return
   
-    console.log("FETCH POINTS USER ID:", userId)
+    console.log("① FETCH POINTS START")
+    console.log("② FETCH POINTS USER ID:", userId)
   
-    const {
-      data,
-      error,
-    } = await supabase
+    const result = await supabase
       .from("user_points")
       .select("points")
       .eq("user_id", userId)
       .maybeSingle()
   
-    console.log("FETCH POINTS RESULT:", {
+    console.log("③ FETCH POINTS RAW RESULT:", result)
+  
+    const {
       data,
       error,
-    })
+    } = result
   
     if (error) {
       console.error(
-        "ポイント取得エラー:",
+        "④ ポイント取得エラー:",
         error
       )
       return
     }
   
+    console.log(
+      "⑤ 取得したポイント:",
+      data?.points
+    )
+  
     setPoints(data?.points ?? 0)
+  
+    console.log(
+      "⑥ setPoints実行:",
+      data?.points ?? 0
+    )
   }
   const handlePointSubmit = async () => {
     setPointError("")
