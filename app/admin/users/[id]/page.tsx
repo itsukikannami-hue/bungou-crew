@@ -14,6 +14,16 @@ type Profile = {
   is_admin: boolean
 }
 
+type PointTransaction = {
+    id: string
+    user_id: string
+    amount: number
+    type: string
+    description: string | null
+    created_at: string
+    created_by: string | null
+  }
+
 export default function AdminUserDetailPage() {
 
 
@@ -32,6 +42,12 @@ const [pointType, setPointType] = useState<
 >("admin_grant")
 
 const [points, setPoints] = useState(0)
+
+const [pointTransactions, setPointTransactions] =
+  useState<PointTransaction[]>([])
+
+const [pointHistoryLoading, setPointHistoryLoading] =
+  useState(false)
 
 const [pointAmount, setPointAmount] =
   useState("")
@@ -134,6 +150,51 @@ const [pointMessage, setPointMessage] =
       userPoints
     )
   }
+
+  const fetchPointTransactions = async () => {
+    if (!userId) return
+  
+    setPointHistoryLoading(true)
+  
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("point_transactions")
+      .select(
+        "id, user_id, amount, type, description, created_at, created_by"
+      )
+      .eq("user_id", userId)
+      .order("created_at", {
+        ascending: false,
+      })
+  
+    console.log(
+      "POINT TRANSACTIONS RESULT:",
+      {
+        data,
+        error,
+      }
+    )
+  
+    if (error) {
+      console.error(
+        "ポイント履歴取得エラー:",
+        error
+      )
+  
+      setPointTransactions([])
+      setPointHistoryLoading(false)
+      return
+    }
+  
+    setPointTransactions(
+      data || []
+    )
+  
+    setPointHistoryLoading(false)
+  }
+
   const handlePointSubmit = async () => {
     setPointError("")
     setPointMessage("")
@@ -197,6 +258,7 @@ const [pointMessage, setPointMessage] =
       setShowPointModal(false)
 
       await fetchPoints()
+      await fetchPointTransactions()
 
   
     } catch (error) {
@@ -215,6 +277,7 @@ const [pointMessage, setPointMessage] =
   
     fetchUser()
     fetchPoints()
+    fetchPointTransactions()
   }, [userId])
 
   if (loading) {
@@ -407,6 +470,78 @@ const [pointMessage, setPointMessage] =
 >
   ポイントを付与・減算
 </button>
+
+</div>
+
+<div className="bg-white border border-gray-200 rounded-2xl p-6 md:col-span-2">
+
+  <div className="flex items-center justify-between">
+    <div>
+      <h2 className="font-semibold text-gray-900">
+        ポイント履歴
+      </h2>
+
+      <p className="mt-1 text-sm text-gray-500">
+        このユーザーのポイント増減履歴
+      </p>
+    </div>
+  </div>
+
+  <div className="mt-5">
+
+    {pointHistoryLoading ? (
+      <p className="text-sm text-gray-500">
+        ポイント履歴を読み込んでいます...
+      </p>
+    ) : pointTransactions.length === 0 ? (
+      <p className="text-sm text-gray-500">
+        ポイント履歴はありません。
+      </p>
+    ) : (
+      <div className="divide-y divide-gray-200">
+
+        {pointTransactions.map((transaction) => (
+          <div
+            key={transaction.id}
+            className="py-4 flex items-center justify-between gap-4"
+          >
+
+            <div className="min-w-0">
+
+              <p className="text-sm font-medium text-gray-900">
+                {transaction.description || "理由なし"}
+              </p>
+
+              <p className="mt-1 text-xs text-gray-500">
+                {new Date(
+                  transaction.created_at
+                ).toLocaleString("ja-JP")}
+              </p>
+
+              <p className="mt-1 text-xs text-gray-400">
+                {transaction.type}
+              </p>
+
+            </div>
+
+            <p
+              className={`shrink-0 text-lg font-bold ${
+                transaction.amount > 0
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {transaction.amount > 0 ? "+" : ""}
+              {transaction.amount.toLocaleString()} pt
+            </p>
+
+          </div>
+        ))}
+
+      </div>
+    )}
+
+  </div>
 
 </div>
 
