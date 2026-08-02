@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import { FcGoogle } from "react-icons/fc"
 import { FaXTwitter } from "react-icons/fa6"
@@ -45,7 +46,8 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "x",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo:
+          `${window.location.origin}/auth/callback`,
       },
     })
   
@@ -84,6 +86,10 @@ export default function LoginPage() {
       >
         ログイン
       </button>
+
+      <Link href="/forgot-password">
+  パスワードを忘れた方はこちら
+</Link>
 
       <div className="my-4 flex items-center">
   <div className="flex-1 border-t"></div>
