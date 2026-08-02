@@ -145,6 +145,8 @@ const [pointMessage, setPointMessage] =
       )
   
       const result = await response.json()
+
+      console.log("POINT API RESULT:", result)
   
       if (!response.ok) {
         setPointError(

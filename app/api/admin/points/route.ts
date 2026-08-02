@@ -162,37 +162,38 @@ export async function POST(request: Request) {
         created_by: user.id,
       })
 
-    if (insertError) {
-      console.error(
-        "ポイント履歴追加エラー:",
-        insertError
-      )
-
-      return NextResponse.json(
-        {
-          error:
-            "ポイント処理に失敗しました。",
-        },
-        {
-          status: 500,
-        }
-      )
-    }
+      if (insertError) {
+        console.error(
+          "ポイント履歴追加エラー:",
+          insertError
+        )
+      
+        return NextResponse.json(
+          {
+            error: insertError.message,
+          },
+          {
+            status: 500,
+          }
+        )
+      }
 
     return NextResponse.json({
       success: true,
     })
 
-  } catch (error) {
+} catch (error) {
     console.error(
       "ポイントAPIエラー:",
       error
     )
-
+  
     return NextResponse.json(
       {
         error:
-          "サーバーエラーが発生しました。",
+          error instanceof Error
+            ? error.message
+            : "サーバーエラーが発生しました。",
       },
       {
         status: 500,
