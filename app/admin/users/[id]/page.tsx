@@ -83,25 +83,21 @@ const [pointMessage, setPointMessage] =
       data,
       error,
     } = await supabase
-      .from("point_transactions")
-      .select("amount")
+      .from("user_points")
+      .select("points")
       .eq("user_id", userId)
+      .maybeSingle()
   
     if (error) {
-      console.error(error)
+      console.error(
+        "ポイント取得エラー:",
+        error
+      )
       return
     }
   
-    const totalPoints =
-      (data || []).reduce(
-        (sum, transaction) =>
-          sum + transaction.amount,
-        0
-      )
-  
-    setPoints(totalPoints)
+    setPoints(data?.points ?? 0)
   }
-
   const handlePointSubmit = async () => {
     setPointError("")
     setPointMessage("")
@@ -165,9 +161,7 @@ const [pointMessage, setPointMessage] =
       setShowPointModal(false)
 
       await fetchPoints()
-  
-      // ポイント残高を再取得
-      await fetchUser()
+
   
     } catch (error) {
       console.error(error)
@@ -181,12 +175,10 @@ const [pointMessage, setPointMessage] =
   }
 
   useEffect(() => {
-
-
-
-
-
+    if (!userId) return
+  
     fetchUser()
+    fetchPoints()
   }, [userId])
 
   if (loading) {
