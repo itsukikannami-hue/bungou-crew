@@ -14,6 +14,46 @@ type Item = {
   is_active: boolean
 }
 
+const handlePurchase = async (itemId: string) => {
+    try {
+      const response = await fetch(
+        "/api/items/purchase",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            itemId,
+          }),
+        }
+      )
+  
+      const result = await response.json()
+  
+      if (!response.ok) {
+        alert(
+          result.error ||
+          "購入に失敗しました。"
+        )
+        return
+      }
+  
+      alert("アイテムを購入しました。")
+  
+      // ポイント残高を再取得
+      // アイテム一覧を再取得
+      // 必要なら画面を更新
+  
+    } catch (error) {
+      console.error(error)
+  
+      alert(
+        "購入処理に失敗しました。"
+      )
+    }
+  }
+
 export default function ItemsPage() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,11 +131,11 @@ export default function ItemsPage() {
             </p>
 
             <button
-              type="button"
-              className="mt-5 w-full rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              購入する
-            </button>
+  type="button"
+  onClick={() => handlePurchase(item.id)}
+>
+  購入
+</button>
 
           </div>
         ))}

@@ -15,6 +15,25 @@ import {
   checkGrowthBadges
 } from "@/lib/badges"
 
+type UserItem = {
+  id: string
+  user_id: string
+  item_id: string
+  quantity: number
+  obtained_at: string
+  expires_at: string | null
+
+  item: {
+    id: string
+    name: string
+    type: string
+    effect_type: string
+    effect_value: number | null
+    duration: number | null
+    price: number
+    is_active: boolean
+  }
+}
 
 export default function HomeBungou() {
 
@@ -42,6 +61,8 @@ export default function HomeBungou() {
 
   const isFetchingRef = useRef(false)
   const [loading, setLoading] = useState(true)
+
+  const [userItems, setUserItems] = useState<UserItem[]>([])
 
   const [bungou, setBungou] = useState(null)
 
@@ -322,6 +343,67 @@ const openWritingPost = async () => {
 
   }
 
+
+  const fetchUserItems = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+  
+      if (!user) {
+        setUserItems([])
+        return
+      }
+  
+      const { data, error } = await supabase
+        .from("user_items")
+        .select(`
+          id,
+          user_id,
+          item_id,
+          quantity,
+          obtained_at,
+          expires_at,
+          items (
+            id,
+            name,
+            type,
+            effect_type,
+            effect_value,
+            duration,
+            price,
+            is_active
+          )
+        `)
+        .eq("user_id", user.id)
+        .gt("quantity", 0)
+  
+      if (error) {
+        console.error(
+          "所持アイテム取得エラー:",
+          error
+        )
+  
+        setUserItems([])
+        return
+      }
+  
+      console.log(
+        "所持アイテム:",
+        data
+      )
+  
+      setUserItems(data as UserItem[])
+    } catch (error) {
+      console.error(
+        "所持アイテム取得エラー:",
+        error
+      )
+  
+      setUserItems([])
+    }
+  }
+
   // =========================
   // 🐣 ブンゴウ取得（修正版）
   // =========================
@@ -530,6 +612,7 @@ console.log("🌱 species:", updatedInstance?.bungou_species)
 
   useEffect(() => {
     fetchBungou()
+    fetchUserItems()
   }, [])
 
   // =========================
