@@ -15,25 +15,7 @@ import {
   checkGrowthBadges
 } from "@/lib/badges"
 
-type UserItem = {
-  id: string
-  user_id: string
-  item_id: string
-  quantity: number
-  obtained_at: string
-  expires_at: string | null
 
-  item: {
-    id: string
-    name: string
-    type: string
-    effect_type: string
-    effect_value: number | null
-    duration: number | null
-    price: number
-    is_active: boolean
-  }
-}
 
 export default function HomeBungou() {
 
@@ -62,7 +44,7 @@ export default function HomeBungou() {
   const isFetchingRef = useRef(false)
   const [loading, setLoading] = useState(true)
 
-  const [userItems, setUserItems] = useState<UserItem[]>([])
+  const [userItems, setUserItems] = useState([])
 
   const [bungou, setBungou] = useState(null)
 
@@ -393,7 +375,7 @@ const openWritingPost = async () => {
         data
       )
   
-      setUserItems(data as UserItem[])
+      setUserItems(data || [])
     } catch (error) {
       console.error(
         "所持アイテム取得エラー:",
