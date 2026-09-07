@@ -78,9 +78,17 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
 
  const fetchPremiumStatus = async (userId: string) => {
   try {
+    console.log("PREMIUM STATUS CHECK:", userId)
+
     const { data: premiumData, error: premiumError } =
       await supabase.rpc("is_premium_user", {
         target_user_id: userId,
+      })
+
+      console.log("本番PREMIUM RPC:", {
+        userId,
+        premiumData,
+        premiumError,
       })
 
     if (premiumError) {
@@ -92,6 +100,11 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
     }
 
     setIsPremium(Boolean(premiumData))
+
+    console.log(
+      "isPremium SET:",
+      Boolean(premiumData)
+    )
 
     const { data: subscriptionData, error: subscriptionError } =
       await supabase
@@ -106,6 +119,11 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
         })
         .limit(1)
         .maybeSingle()
+
+    console.log("SUBSCRIPTION RESULT:", {
+      subscriptionData,
+      subscriptionError,
+    })
 
     if (subscriptionError) {
       console.error(
