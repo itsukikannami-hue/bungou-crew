@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
+import AdBanner from "@/components/AdBanner"
 
 import Header from "@/components/Header"
 import BungouPet from "@/components/BungouPet"
@@ -152,6 +153,7 @@ useEffect(() => {
 
       <main className="min-h-screen flex flex-col items-center bg-gray-50 p-6 space-y-6">
 
+      <AdBanner />
 
         {/* ペット */}
         <HomeBungou />
@@ -172,6 +174,23 @@ useEffect(() => {
       👤 マイページ
     </button>
   </Link>
+
+  <Link href="/quests">
+  <button
+    className="
+      w-full
+      max-w-md
+      bg-yellow-500
+      text-white
+      py-3
+      rounded-xl
+      shadow
+      hover:bg-yellow-600
+    "
+  >
+    🎯 クエスト
+  </button>
+</Link>
 
   <Link href="/timeline">
   <button
@@ -206,6 +225,8 @@ useEffect(() => {
     🔍 検索
   </button>
 </Link>
+
+
 
         {user && friendIdToCall && (
   <DMChat

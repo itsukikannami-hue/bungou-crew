@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import PostCard from "@/components/PostCard"
 import type { User } from "@supabase/supabase-js"
+import AdTimelineCard from "@/components/AdTimelineCard"
 
 type Post = {
   id: string
@@ -117,52 +118,51 @@ export default function TimelinePage() {
       
       
       if(mode === "recommend"){
+
+        const {data,error}=await supabase
+          .from("posts")
+          .select(`
+            *,
+            profiles(
+              username,
+              avatar_url
+            ),
+            post_cheers(
+              id
+            ),
+            repost:repost_id(
+              *,
+              profiles(
+                username,
+                avatar_url
+              ),
+              post_cheers(
+                id
+              )
+            )
+          `)
+          .eq(
+            "deleted",
+            false
+          )
+          .order(
+            "created_at",
+            {
+              ascending:false
+            }
+          )
       
+        if(error){
+          console.error("タイムライン取得エラー:", error)
+          return
+        }
       
-      const {data,error}=await supabase
-      .from("posts")
-      .select(`
-       *,
-       profiles(
-        username,
-        avatar_url
-       ),
-       post_cheers(
-        id
-       ),
-       repost:repost_id(
-        *,
-        profiles(
-         username,
-         avatar_url
-        ),
-        post_cheers(
-         id
-        )
-       )
-      `)
-      .eq(
-      "deleted",
-      false
-      )
-      .order(
-      "created_at",
-      {
-      ascending:false
-      }
-      )
+        console.log("タイムライン取得結果:", data)
+        console.log("タイムライン取得件数:", data?.length)
       
+        setPosts((data ?? []) as Post[])
       
-      if(error){
-      console.error(error)
-      return
-      }
-      
-      
-      setPosts((data ?? []) as Post[])
-      
-      return
-      
+        return
       }
       
       
@@ -339,25 +339,28 @@ export default function TimelinePage() {
 
       <div className="space-y-3">
 
+      {posts.map((post, index) => (
 
-      {posts.map(post => (
+<div key={post.id}>
 
-<PostCard
+  <PostCard
+    post={post}
+    user={user}
+    deletePost={deletePost}
+  />
 
-key={post.id}
+  {/* 6投稿ごとに広告を表示 */}
+  {(index + 1) % 6 === 0 && (
+    <div className="mt-3">
+      <AdTimelineCard />
+    </div>
+  )}
 
-post={post}
-
-user={user}
-
-deletePost={deletePost}
-
-/>
+</div>
 
 ))}
 
-
-      </div>
+</div>
 
 
     </div>

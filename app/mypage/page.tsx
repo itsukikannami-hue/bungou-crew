@@ -53,6 +53,12 @@ type Post = {
 export default function MyPage() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
+const [premiumSubscription, setPremiumSubscription] = useState<{
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+} | null>(null)
   const [logs, setLogs] = useState<WritingLog[]>([])
   const [badges, setBadges] = useState<UserBadge[]>([])
   const [following, setFollowing] = useState(0)
@@ -69,6 +75,54 @@ export default function MyPage() {
 
  const [content, setContent] = useState("")
  const [posts,setPosts] = useState<Post[]>([])
+
+ const fetchPremiumStatus = async (userId: string) => {
+  try {
+    const { data: premiumData, error: premiumError } =
+      await supabase.rpc("is_premium_user", {
+        target_user_id: userId,
+      })
+
+    if (premiumError) {
+      console.error(
+        "プレミアム判定取得エラー:",
+        premiumError
+      )
+      return
+    }
+
+    setIsPremium(Boolean(premiumData))
+
+    const { data: subscriptionData, error: subscriptionError } =
+      await supabase
+        .from("subscriptions")
+        .select(
+          "current_period_end, cancel_at_period_end"
+        )
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("current_period_end", {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle()
+
+    if (subscriptionError) {
+      console.error(
+        "プレミアム契約情報取得エラー:",
+        subscriptionError
+      )
+      return
+    }
+
+    setPremiumSubscription(subscriptionData)
+  } catch (error) {
+    console.error(
+      "プレミアム情報取得エラー:",
+      error
+    )
+  }
+}
 
  const extractHashtags = (text:string)=>{
 
@@ -154,6 +208,58 @@ return
     
     await fetchPosts()
     
+    }
+
+
+    const startCheckout = async () => {
+      if (!user) {
+        alert("ログインが必要です")
+        return
+      }
+    
+      try {
+        setIsCheckoutLoading(true)
+    
+        const response = await fetch(
+          "/api/stripe/checkout",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        )
+    
+        const data = await response.json()
+    
+        if (!response.ok) {
+          alert(
+            data.error ||
+              "Checkoutの作成に失敗しました"
+          )
+          return
+        }
+    
+        if (!data.url) {
+          alert(
+            "Stripe Checkout URLを取得できませんでした"
+          )
+          return
+        }
+    
+        window.location.href = data.url
+      } catch (error) {
+        console.error(
+          "Checkout開始エラー:",
+          error
+        )
+    
+        alert(
+          "Stripe Checkoutの開始に失敗しました"
+        )
+      } finally {
+        setIsCheckoutLoading(false)
+      }
     }
 
     const fetchPosts = async () => {
@@ -277,6 +383,8 @@ const BADGE_DATA: Record<string,{
       if (!user) return
 
       setUser(user)
+
+      await fetchPremiumStatus(userData.id)
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -492,6 +600,71 @@ const BADGE_DATA: Record<string,{
         </div>
 
       </div>
+
+
+      {/* =========================
+    プレミアムプラン
+========================= */}
+<div className="px-4 pb-4">
+  <div className="bg-white rounded-xl shadow-sm border p-5">
+
+    {isPremium ? (
+      <>
+        <div className="text-lg font-bold">
+          ✨ プレミアム会員
+        </div>
+
+        <div className="text-sm text-green-600 font-bold mt-2">
+          現在プレミアム会員です
+        </div>
+
+        {premiumSubscription?.current_period_end && (
+          <div className="text-sm text-gray-500 mt-3">
+            次回更新日：
+            {new Date(
+              premiumSubscription.current_period_end
+            ).toLocaleDateString("ja-JP")}
+          </div>
+        )}
+
+        {premiumSubscription?.cancel_at_period_end && (
+          <div className="text-sm text-orange-600 font-bold mt-3">
+            契約終了予定です
+          </div>
+        )}
+
+        <div className="mt-4 w-full bg-gray-100 text-gray-600 rounded-lg py-3 text-center font-bold">
+          契約中
+        </div>
+      </>
+    ) : (
+      <>
+        <div className="text-lg font-bold">
+          ✨ ブンゴウクルー プレミアム
+        </div>
+
+        <div className="text-2xl font-bold mt-2">
+          月額500円
+        </div>
+
+        <div className="text-sm text-gray-500 mt-2">
+          プレミアム会員になると、今後追加されるプレミアム機能をご利用いただけます。
+        </div>
+
+        <button
+          onClick={startCheckout}
+          disabled={isCheckoutLoading}
+          className="mt-4 w-full bg-black text-white rounded-lg py-3 font-bold disabled:opacity-50"
+        >
+          {isCheckoutLoading
+            ? "Stripeへ移動中..."
+            : "プレミアムに登録する"}
+        </button>
+      </>
+    )}
+
+  </div>
+</div>
 
       {/* =========================
           バッジ

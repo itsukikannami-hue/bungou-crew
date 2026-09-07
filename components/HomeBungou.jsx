@@ -46,6 +46,70 @@ export default function HomeBungou() {
 
   const [userItems, setUserItems] = useState([])
 
+  const useItem = async (
+    itemId,
+    recoveryDate = null
+  ) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+  
+      if (!user) {
+        alert("ログインが必要です。")
+        return
+      }
+  
+      const response = await fetch(
+        "/api/items/use",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            itemId,
+            recoveryDate,
+          }),
+        }
+      )
+  
+      const result = await response.json()
+  
+      if (!response.ok) {
+        alert(
+          result.error ||
+          "アイテムの使用に失敗しました。"
+        )
+        return
+      }
+  
+      console.log(
+        "ITEM USE SUCCESS:",
+        result
+      )
+  
+      setShowRecoveryModal(false)
+      setSelectedRecoveryDate("")
+  
+      alert(
+        result.message ||
+        "アイテムを使用しました。"
+      )
+  
+    } catch (error) {
+      console.error(
+        "USE ITEM ERROR:",
+        error
+      )
+  
+      alert(
+        "アイテム使用処理に失敗しました。"
+      )
+    }
+  }
+
   const [bungou, setBungou] = useState(null)
 
   const [showInfo, setShowInfo] = useState(false)
@@ -86,6 +150,8 @@ export default function HomeBungou() {
   const [showPostModal,setShowPostModal] = useState(false)
 const [postText,setPostText] = useState("")
 
+const [showRecoveryModal, setShowRecoveryModal] = useState(false)
+const [selectedRecoveryDate, setSelectedRecoveryDate] = useState("")
 
 const openWritingPost = async () => {
 
@@ -708,10 +774,122 @@ console.log("🌱 species:", updatedInstance?.bungou_species)
   
   console.log("ownedBadgeSet", [...ownedBadgeSet])
 
-    const words = Number(inputWords || 0)
-    const minutes = Number(timer.minutes || 0)
+  const words = Number(inputWords || 0)
+  const minutes = Number(timer.minutes || 0)
+  
+  // =========================
+  // EXP基本値
+  // =========================
+  const baseExp = words + minutes * 5
+  
+  // =========================
+  // ✨ EXPブースト確認
+  // =========================
+  const { data: expBoostItem, error: expBoostItemError } = await supabase
+    .from("items")
+    .select("id, name, effect_type, effect_value")
+    .eq("effect_type", "EXP_MULTIPLIER")
+    .eq("effect_value", 2)
+    .eq("is_active", true)
+    .maybeSingle()
+  
+  if (expBoostItemError) {
+    console.error("EXPブースト取得エラー:", expBoostItemError)
+  }
+  
+  let expGain = baseExp
+  let usedExpBoost = false
+  
+  if (expBoostItem) {
+  
+    const { data: ownedExpBoost, error: ownedExpBoostError } =
+      await supabase
+        .from("user_items")
+        .select("id, quantity")
+        .eq("user_id", user.id)
+        .eq("item_id", expBoostItem.id)
+        .gt("quantity", 0)
+        .maybeSingle()
+  
+    if (ownedExpBoostError) {
+      console.error("EXPブースト所持確認エラー:", ownedExpBoostError)
+    }
+  
+    if (ownedExpBoost) {
+      console.log("🔥 EXPブースト所持状態:", {
+        id: ownedExpBoost.id,
+        quantity: ownedExpBoost.quantity,
+        itemId: expBoostItem.id,
+      })
+    
+      const newQuantity = ownedExpBoost.quantity - 1
+  
+      if (newQuantity > 0) {
 
-    const expGain = words + minutes * 5
+        const { data: updatedItem, error } = await supabase
+          .from("user_items")
+          .update({
+            quantity: newQuantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", ownedExpBoost.id)
+          .select()
+      
+        console.log("🔄 EXPブースト数量更新結果:", {
+          updatedItem,
+          error
+        })
+      
+        if (error) {
+          console.error("EXPブースト消費エラー:", error)
+          return
+        }
+      
+        if (!updatedItem || updatedItem.length === 0) {
+          console.error(
+            "❌ EXPブースト数量が更新されていません。RLSを確認してください。"
+          )
+          return
+        }
+      } else {
+
+        const { data: deletedItem, error } = await supabase
+          .from("user_items")
+          .delete()
+          .eq("id", ownedExpBoost.id)
+          .select()
+      
+        console.log("🗑️ EXPブースト削除結果:", {
+          deletedItem,
+          error
+        })
+      
+        if (error) {
+          console.error("EXPブースト削除エラー:", error)
+          return
+        }
+      
+        if (!deletedItem || deletedItem.length === 0) {
+          console.error(
+            "❌ EXPブーストがDBから削除されていません。RLSを確認してください。"
+          )
+          return
+        }
+      
+        console.log("✅ EXPブーストを1個消費しました")
+      }
+  
+      // EXPを2倍
+      expGain = baseExp * 2
+  
+      usedExpBoost = true
+  
+      console.log("✨ EXPブースト使用")
+      console.log("通常EXP:", baseExp)
+      console.log("ブースト後EXP:", expGain)
+      console.log("残り個数:", newQuantity)
+    }
+  }
 
     const now = new Date()
 
@@ -1030,6 +1208,17 @@ src={
           ▶ スタート
         </button>
       </div>
+
+      <button
+  onClick={() => {
+    setSelectedRecoveryDate("")
+    setShowRecoveryModal(true)
+  }}
+  className="bg-purple-500 text-white px-4 py-2 rounded-lg"
+>
+  習慣リカバリーを使う
+</button>
+
 
       {/* ⏱ タイマー */}
       {timer && (
@@ -1560,6 +1749,66 @@ onClick={() => {
 </div>
 
 )}
+
+{showRecoveryModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[300]">
+
+    <div className="bg-white rounded-2xl p-6 w-[350px] shadow-2xl">
+
+      <h2 className="text-xl font-bold mb-4">
+        🔄 習慣リカバリー
+      </h2>
+
+      <p className="text-sm text-gray-600 mb-4">
+        復旧したい日を選択してください。
+      </p>
+
+      <input
+        type="date"
+        value={selectedRecoveryDate}
+        onChange={(e) =>
+          setSelectedRecoveryDate(e.target.value)
+        }
+        className="w-full border rounded-lg p-3 mb-5"
+      />
+
+      <div className="flex gap-3">
+
+        <button
+          onClick={() => {
+            setShowRecoveryModal(false)
+            setSelectedRecoveryDate("")
+          }}
+          className="flex-1 bg-gray-300 py-2 rounded-lg"
+        >
+          キャンセル
+        </button>
+
+        <button
+          onClick={() => {
+            if (!selectedRecoveryDate) {
+              alert("復旧する日を選択してください。")
+              return
+            }
+
+            useItem(
+              "e98e579f-67c7-4e24-9b9b-7c21fca772d7",
+              selectedRecoveryDate
+            )
+          }}
+          className="flex-1 bg-purple-500 text-white py-2 rounded-lg"
+        >
+          この日を復旧する
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+)}
     </div>
   )
+
+  
 }

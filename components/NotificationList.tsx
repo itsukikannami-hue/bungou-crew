@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { getNotifications, markAsRead } from "@/lib/notification"
+import { createNotification } from "@/lib/notification"
 
 export default function NotificationList({ userId }: any) {
 
@@ -23,19 +24,23 @@ export default function NotificationList({ userId }: any) {
   useEffect(()=>{
 
     const channel = supabase
-      .channel("notifications")
-      .on(
-        "postgres_changes",
-        {
-          event:"INSERT",
-          schema:"public",
-          table:"notifications"
-        },
-        payload=>{
-          setNotifications(prev=>[payload.new,...prev])
-        }
-      )
-      .subscribe()
+    .channel(`notifications-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => {
+        setNotifications((prev) => [
+          payload.new,
+          ...prev,
+        ])
+      }
+    )
+    .subscribe()
 
     return ()=>{
       supabase.removeChannel(channel)

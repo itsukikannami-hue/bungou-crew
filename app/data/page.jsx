@@ -124,18 +124,39 @@ const [writerTags, setWriterTags] =
     )
 
     const { data, error } = await supabase
-      .from("writing_logs")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("created_at", sevenDaysAgo.toISOString())
-      .order("created_at", { ascending: true })
+    .from("writing_logs")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
 
     if (error) {
       console.log(error)
       return
     }
 
+    const allLogs = data || []
+
+const weeklyLogs = allLogs.filter((log) => {
+  return new Date(log.created_at) >= sevenDaysAgo
+})
+
     console.log("writing logs:", data)
+
+    // =========================
+// 習慣リカバリー取得
+// =========================
+
+const {
+  data: recoveries,
+  error: recoveryError,
+} = await supabase
+  .from("streak_recoveries")
+  .select("recovery_date")
+  .eq("user_id", userId)
+
+if (recoveryError) {
+  console.log("recovery error:", recoveryError)
+}
 
     const grouped = {}
 
@@ -155,7 +176,7 @@ const [writerTags, setWriterTags] =
         夜: 0,
       }
 
-    data.forEach((log) => {
+      weeklyLogs.forEach((log) => {
 
       const date = new Date(log.created_at)
         .toLocaleDateString("ja-JP", {
@@ -254,9 +275,10 @@ setTimeZoneData(
     setTotalMinutes(minutes)
 
     // 連続執筆
-    calculateStreak(data)
+    calculateStreak(allLogs, recoveries)
 
-    analyzeWriterType(data)
+    // 作家タイプ分析
+    analyzeWriterType(allLogs)
 
 
 
@@ -268,42 +290,65 @@ setTimeZoneData(
   // 連続執筆日数
   // =========================
 
-  const calculateStreak = (logs) => {
-
-    if (!logs?.length) {
+  const calculateStreak = (logs, recoveries = []) => {
+    // =========================
+    // 執筆した日
+    // =========================
+    const writingDays = (logs || []).map((log) =>
+      new Date(log.created_at)
+        .toISOString()
+        .split("T")[0]
+    )
+  
+    // =========================
+    // リカバリーした日
+    // =========================
+    const recoveryDays = (recoveries || []).map(
+      (recovery) => recovery.recovery_date
+    )
+  
+    // =========================
+    // 執筆日 + リカバリー日
+    // =========================
+    const uniqueDays = [
+      ...new Set([
+        ...writingDays,
+        ...recoveryDays,
+      ]),
+    ]
+  
+    if (!uniqueDays.length) {
       setStreakDays(0)
       return
     }
-
-    const uniqueDays = [
-      ...new Set(
-        logs.map(log =>
-          new Date(log.created_at)
-            .toISOString()
-            .split("T")[0]
-        )
-      )
-    ]
-
+  
+    // 新しい順
     uniqueDays.sort().reverse()
-
+  
+    // =========================
+    // 今日から連続しているか確認
+    // =========================
     let streak = 0
-
+  
     for (let i = 0; i < uniqueDays.length; i++) {
-
       const target = new Date()
-      target.setDate(target.getDate() - i)
-
+  
+      target.setHours(0, 0, 0, 0)
+  
+      target.setDate(
+        target.getDate() - i
+      )
+  
       const targetString =
         target.toISOString().split("T")[0]
-
-      if (uniqueDays[i] === targetString) {
+  
+      if (uniqueDays.includes(targetString)) {
         streak++
       } else {
         break
       }
     }
-
+  
     setStreakDays(streak)
   }
 

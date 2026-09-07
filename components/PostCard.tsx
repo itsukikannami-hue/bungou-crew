@@ -62,6 +62,9 @@ export default function PostCard({
   deletePost,
 }: PostCardProps) {
 
+  console.log("PostCardに渡された投稿:", post)
+
+
 const [myCheers,setMyCheers] = useState<string[]>([])
 
 const [comments, setComments] = useState<Comment[]>([])
@@ -85,6 +88,25 @@ const profileUrl =
 post.user_id === user?.id
 ? "/mypage"
 : `/user/${post.user_id}`
+
+
+const isQuestFeedback =
+  (post.content ?? "").startsWith("📖 クエストで")
+
+const [showFullFeedback, setShowFullFeedback] =
+  useState(false)
+
+const feedbackContent =
+  post.content ?? ""
+
+const isLongFeedback =
+  isQuestFeedback &&
+  feedbackContent.length > 140
+
+const displayedFeedback =
+  isLongFeedback && !showFullFeedback
+    ? feedbackContent.slice(0, 140) + "…"
+    : feedbackContent
 
 const fetchMyCheers = async()=>{
 
@@ -335,7 +357,12 @@ const fetchMyCheers = async()=>{
 
 <Link href={profileUrl}>
 <Image
-  src={post.profiles?.avatar_url ?? "/default.png"}
+  src={
+    post.profiles?.avatar_url &&
+    post.profiles.avatar_url.trim() !== ""
+      ? post.profiles.avatar_url
+      : "/default.png"
+  }
   alt="avatar"
   width={40}
   height={40}
@@ -357,43 +384,45 @@ className="font-bold hover:underline ml-3"
           {/* 本文 */}
           <div className="whitespace-pre-wrap">
 
-{
-(post.content ?? "").split(/(\s+)/).map(
-(text,index)=>{
+{displayedFeedback.split(/(\s+)/).map(
+  (text, index) => {
 
+    if (text.startsWith("#")) {
 
-if(text.startsWith("#")){
+      return (
+        <span
+          key={index}
+          className="text-blue-500 cursor-pointer"
+          onClick={() => {
+            window.location.href =
+              `/timeline?tag=${text.substring(1)}`
+          }}
+        >
+          {text}
+        </span>
+      )
 
+    }
 
-return (
+    return text
 
-<span
-key={index}
-className="text-blue-500 cursor-pointer"
-onClick={()=>{
-
-  window.location.href=
-`/timeline?tag=${text.substring(1)}`
-
-}}
->
-
-{text}
-
-</span>
-
-)
-
-}
-
-
-return text
-
-
-})
-}
+  }
+)}
 
 </div>
+
+{isLongFeedback && (
+  <button
+    onClick={() =>
+      setShowFullFeedback(!showFullFeedback)
+    }
+    className="text-blue-500 text-sm mt-2 hover:underline"
+  >
+    {showFullFeedback
+      ? "閉じる"
+      : "続きを読む"}
+  </button>
+)}
       
           {showQuote && (
 
