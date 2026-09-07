@@ -19,7 +19,7 @@ type Ad = {
   created_at: string
   profiles: {
     username: string | null
-  } | null
+  }[]
 }
 
 export default function AdminAdsPage() {
