@@ -94,22 +94,15 @@ export async function POST() {
     // ----------------------------------------
     // Stripe Customer
     // ----------------------------------------
-
-    let customerId =
-      existingSubscription?.stripe_customer_id ??
-      undefined
-
-    if (!customerId) {
-      const customer =
-        await stripe.customers.create({
-          email: user.email ?? undefined,
-          metadata: {
-            user_id: user.id,
-          },
-        })
-
-      customerId = customer.id
-    }
+    const customer =
+    await stripe.customers.create({
+      email: user.email ?? undefined,
+      metadata: {
+        user_id: user.id,
+      },
+    })
+  
+  const customerId = customer.id
 
     // ----------------------------------------
     // Stripe Checkout Session

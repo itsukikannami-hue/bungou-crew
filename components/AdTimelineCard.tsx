@@ -9,10 +9,10 @@ type Ad = {
   user_id: string
   genre: string
   message: string
-  link_url: string | null
+  link_url: string
   profiles: {
     username: string | null
-  } | null
+  }[]
 }
 
 export default function AdTimelineCard() {
@@ -131,7 +131,7 @@ export default function AdTimelineCard() {
         </p>
 
         <p className="text-base font-bold text-gray-900">
-          {ad.profiles?.username ?? "ユーザー"}
+          {ad.profiles?.[0]?.username ?? "ユーザー"}
         </p>
       </div>
 

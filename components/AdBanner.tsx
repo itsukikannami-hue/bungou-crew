@@ -12,7 +12,7 @@ type Ad = {
     link_url: string
     profiles: {
       username: string | null
-    } | null
+    }[]
   }
 
 export default function AdBanner() {
@@ -115,7 +115,7 @@ const randomIndex = Math.floor(
     </p>
 
     <p className="text-lg font-bold text-gray-900">
-      {ad.profiles?.username ?? "ユーザー"}
+      {ad.profiles?.[0]?.username ?? "ユーザー"}
     </p>
   </div>
 

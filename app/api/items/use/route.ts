@@ -119,7 +119,9 @@ export async function POST(request: Request) {
     // ④ アイテム情報確認
     // =========================
 
-    const item = userItem.items
+    const item = Array.isArray(userItem.items)
+    ? userItem.items[0]
+    : userItem.items
 
     if (!item) {
       return NextResponse.json(

@@ -26,9 +26,11 @@ export default function ItemsPage() {
 
   // 広告出稿フォーム
   const [showAdForm, setShowAdForm] = useState(false)
+  const [adTitle, setAdTitle] = useState("")
   const [adGenre, setAdGenre] = useState("")
   const [adMessage, setAdMessage] = useState("")
   const [adLinkUrl, setAdLinkUrl] = useState("")
+  const [adImage, setAdImage] = useState<File | null>(null)
   const [adDuration, setAdDuration] = useState<7 | 15 | 30>(7)
   const [adLoading, setAdLoading] = useState(false)
 
@@ -339,7 +341,24 @@ export default function ItemsPage() {
           <p className="mt-2 text-sm text-gray-500">
             あなたの作品をブンゴウクルー内で宣伝できます。
           </p>
+{/* 広告タイトル */}
+<div className="mt-5">
+  <label className="block text-sm font-medium text-gray-700">
+    広告タイトル
+  </label>
 
+  <input
+    type="text"
+    value={adTitle}
+    onChange={(e) =>
+      setAdTitle(e.target.value)
+    }
+    placeholder="例：あなたの作品を読んでください！"
+    maxLength={100}
+    disabled={adLoading}
+    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black disabled:bg-gray-100"
+  />
+</div>
 
           {/* 作品ページURL */}
           <div className="mt-5">
@@ -360,6 +379,29 @@ export default function ItemsPage() {
             />
 
           </div>
+
+{/* 広告画像 */}
+<div className="mt-5">
+  <label className="block text-sm font-medium text-gray-700">
+    広告画像
+  </label>
+
+  <input
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+    onChange={(e) =>
+      setAdImage(
+        e.target.files?.[0] ?? null
+      )
+    }
+    disabled={adLoading}
+    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm disabled:bg-gray-100"
+  />
+
+  <p className="mt-2 text-xs text-gray-500">
+    PNG、JPEG、WebP / 5MB以下
+  </p>
+</div>
 
           <div className="mt-6">
   <label className="block text-sm font-medium text-gray-700">

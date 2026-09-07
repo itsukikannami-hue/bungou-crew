@@ -74,18 +74,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const response = await fetch("/api/ads/purchase", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          genre: adGenre,
-          message: adMessage,
-          linkUrl: adLinkUrl,
-          durationDays: adDuration,
-        }),
-      })
 
     // 画像URL確認
     if (!imageUrl) {
