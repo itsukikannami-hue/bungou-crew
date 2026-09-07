@@ -216,9 +216,9 @@ export default function AdminAdsPage() {
 
                   <td className="px-4 py-4">
 
-                    <p className="font-medium text-gray-900">
-                      {ad.profiles?.username ?? "ユーザー"}
-                    </p>
+                  <p className="font-medium text-gray-900">
+  {ad.profiles?.[0]?.username ?? "ユーザー"}
+</p>
 
                     <p className="mt-1 text-xs text-gray-400">
                       {ad.user_id}
