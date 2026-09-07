@@ -384,7 +384,7 @@ const BADGE_DATA: Record<string,{
 
       setUser(user)
 
-      await fetchPremiumStatus(userData.id)
+      await fetchPremiumStatus(user.id)
 
       const { data: profile } = await supabase
         .from("profiles")
