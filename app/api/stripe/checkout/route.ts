@@ -55,7 +55,7 @@ export async function POST() {
     } = await supabase
       .from("subscriptions")
       .select(
-        "id, status, stripe_customer_id"
+        "id, status, stripe_customer_id, current_period_end"
       )
       .eq("user_id", user.id)
       .in("status", [
@@ -63,6 +63,14 @@ export async function POST() {
         "trialing",
         "past_due",
       ])
+      .gt(
+        "current_period_end",
+        new Date().toISOString()
+      )
+      .order("current_period_end", {
+        ascending: false,
+      })
+      .limit(1)
       .maybeSingle()
 
     if (subscriptionError) {
