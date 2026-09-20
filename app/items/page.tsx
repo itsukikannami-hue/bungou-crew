@@ -33,6 +33,7 @@ export default function ItemsPage() {
   const [adImage, setAdImage] = useState<File | null>(null)
   const [adDuration, setAdDuration] = useState<7 | 15 | 30>(7)
   const [adLoading, setAdLoading] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
 
   const fetchItems = async () => {
     const {
@@ -61,8 +62,41 @@ export default function ItemsPage() {
     setLoading(false)
   }
 
+
+  const checkPremium = async () => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+  
+    if (userError || !user) {
+      setIsPremium(false)
+      return
+    }
+  
+    const {
+      data,
+      error,
+    } = await supabase.rpc("is_premium_user", {
+      target_user_id: user.id,
+    })
+  
+    if (error) {
+      console.error(
+        "プレミアム判定エラー:",
+        error
+      )
+  
+      setIsPremium(false)
+      return
+    }
+  
+    setIsPremium(Boolean(data))
+  }
+
   useEffect(() => {
     fetchItems()
+    checkPremium()
   }, [])
 
   // 通常アイテム購入
@@ -140,15 +174,42 @@ export default function ItemsPage() {
 
     try {
       // ① ログイン確認
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+const {
+  data: { user },
+  error: userError,
+} = await supabase.auth.getUser()
 
-      if (userError || !user) {
-        alert("ログインが必要です。")
-        return
-      }
+if (userError || !user) {
+  alert("ログインが必要です。")
+  return
+}
+
+// ② プレミアム会員確認
+const {
+  data: premiumData,
+  error: premiumError,
+} = await supabase.rpc("is_premium_user", {
+  target_user_id: user.id,
+})
+
+if (premiumError) {
+  console.error(
+    "プレミアム判定エラー:",
+    premiumError
+  )
+
+  alert(
+    "プレミアム会員情報の確認に失敗しました。"
+  )
+  return
+}
+
+if (!premiumData) {
+  alert(
+    "広告出稿はプレミアム会員限定です。"
+  )
+  return
+}
 
       // ② 広告画像をStorageへアップロード
       const fileExtension =
@@ -315,17 +376,23 @@ export default function ItemsPage() {
             ポイントを使って、あなたの作品を広告として掲載できます。
           </p>
 
-          {!showAdForm && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowAdForm(true)
-              }
-              className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
-            >
-              広告を出稿する
-            </button>
-          )}
+          {isPremium ? (
+  !showAdForm && (
+    <button
+      type="button"
+      onClick={() =>
+        setShowAdForm(true)
+      }
+      className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
+    >
+      広告を出稿する
+    </button>
+  )
+) : (
+  <p className="mt-5 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+    広告出稿はプレミアム会員限定です。
+  </p>
+)}
 
         </div>
       </section>

@@ -28,6 +28,46 @@ export async function POST(request: Request) {
       )
     }
 
+    // プレミアム会員確認
+const {
+  data: isPremium,
+  error: premiumError,
+} = await supabase.rpc(
+  "is_premium_user",
+  {
+    target_user_id: user.id,
+  }
+)
+
+if (premiumError) {
+  console.error(
+    "プレミアム判定エラー:",
+    premiumError
+  )
+
+  return NextResponse.json(
+    {
+      error:
+        "プレミアム会員情報の確認に失敗しました。",
+    },
+    {
+      status: 500,
+    }
+  )
+}
+
+if (!isPremium) {
+  return NextResponse.json(
+    {
+      error:
+        "広告出稿はプレミアム会員限定です。",
+    },
+    {
+      status: 403,
+    }
+  )
+}
+
     // リクエスト取得
     const body = await request.json()
 
