@@ -164,8 +164,7 @@ export async function POST(request: Request) {
         },
       ],
 
-      success_url:
-        `${origin}/mypage?point_purchase=success`,
+      success_url: `${origin}/items?point_purchase=success`,
       cancel_url:
         `${origin}/mypage?point_purchase=cancel`,
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 
 type Item = {
@@ -21,6 +22,8 @@ const AD_PLANS = {
 } as const
 
 export default function ItemsPage() {
+  const searchParams = useSearchParams()
+  const pointPurchaseStatus = searchParams.get("point_purchase")
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [points, setPoints] = useState(0)
@@ -133,7 +136,11 @@ const [pointsLoading, setPointsLoading] = useState(true)
     fetchItems()
     fetchPoints()
     checkPremium()
-  }, [])
+  
+    if (pointPurchaseStatus === "success") {
+      fetchPoints()
+    }
+  }, [pointPurchaseStatus])
 
   // 通常アイテム購入
   const handlePurchase = async (itemId: string) => {
@@ -355,6 +362,14 @@ if (!premiumData) {
 
   return (
 <main className="mx-auto max-w-5xl p-6">
+{pointPurchaseStatus === "success" && (
+  <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
+    <p className="font-bold">ポイントの購入が完了しました！</p>
+    <p className="mt-1 text-sm">
+      ポイントがアカウントに追加されました。
+    </p>
+  </div>
+)}
 
 {/* ポイント残高 */}
 <section className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
