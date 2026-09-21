@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabaseServer"
 
-const AD_PLANS = {
-  7: 1500,
-  15: 2500,
-  30: 4500,
+const AD_PRICES = {
+  free: {
+    7: 1500,
+    15: 2500,
+    30: 4500,
+  },
+  premium: {
+    7: null,
+    15: 0,
+    30: 1500,
+  },
+  ultimate: {
+    7: null,
+    15: 0,
+    30: 0,
+  },
 } as const
 
 export async function POST(request: Request) {
@@ -28,45 +40,40 @@ export async function POST(request: Request) {
       )
     }
 
-    // プレミアム会員確認
-const {
-  data: isPremium,
-  error: premiumError,
-} = await supabase.rpc(
-  "is_premium_user",
-  {
-    target_user_id: user.id,
-  }
-)
+    // ユーザーのプランを取得
+    const {
+      data: userPlan,
+      error: planError,
+    } = await supabase.rpc(
+      "get_user_plan",
+      {
+        target_user_id: user.id,
+      }
+    )
 
-if (premiumError) {
-  console.error(
-    "プレミアム判定エラー:",
-    premiumError
-  )
+    if (planError) {
+      console.error(
+        "プラン判定エラー:",
+        planError
+      )
 
-  return NextResponse.json(
-    {
-      error:
-        "プレミアム会員情報の確認に失敗しました。",
-    },
-    {
-      status: 500,
+      return NextResponse.json(
+        {
+          error:
+            "プラン情報の確認に失敗しました。",
+        },
+        {
+          status: 500,
+        }
+      )
     }
-  )
-}
 
-if (!isPremium) {
-  return NextResponse.json(
-    {
-      error:
-        "広告出稿はプレミアム会員限定です。",
-    },
-    {
-      status: 403,
-    }
-  )
-}
+    // 不正なプランを防止
+    const plan =
+      userPlan === "premium" ||
+      userPlan === "ultimate"
+        ? userPlan
+        : "free"
 
     // リクエスト取得
     const body = await request.json()
@@ -114,7 +121,6 @@ if (!isPremium) {
       )
     }
 
-
     // 画像URL確認
     if (!imageUrl) {
       return NextResponse.json(
@@ -158,11 +164,24 @@ if (!isPremium) {
       )
     }
 
-    // サーバー側で料金を決定
+    // プランごとの料金を取得
     const price =
-      AD_PLANS[
+      AD_PRICES[plan][
         durationDays as 7 | 15 | 30
       ]
+
+    // Premium / Ultimate の7日広告は利用不可
+    if (price === null) {
+      return NextResponse.json(
+        {
+          error:
+            "Premium・Ultimateプランでは7日広告を利用できません。",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
 
     // RPC実行
     const {
@@ -196,6 +215,7 @@ if (!isPremium) {
 
     return NextResponse.json({
       success: true,
+      plan,
       price,
       data,
     })

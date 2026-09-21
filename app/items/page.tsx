@@ -14,10 +14,22 @@ type Item = {
   is_active: boolean
 }
 
-const AD_PLANS = {
-  7: 1500,
-  15: 2500,
-  30: 4500,
+const AD_PRICES = {
+  free: {
+    7: 1500,
+    15: 2500,
+    30: 4500,
+  },
+  premium: {
+    7: null,
+    15: 0,
+    30: 1500,
+  },
+  ultimate: {
+    7: null,
+    15: 0,
+    30: 0,
+  },
 } as const
 
 export default function ItemsPage() {
@@ -35,7 +47,9 @@ const [pointsLoading, setPointsLoading] = useState(true)
   const [adImage, setAdImage] = useState<File | null>(null)
   const [adDuration, setAdDuration] = useState<7 | 15 | 30>(7)
   const [adLoading, setAdLoading] = useState(false)
-  const [isPremium, setIsPremium] = useState(false)
+  const [userPlan, setUserPlan] = useState<
+  "free" | "premium" | "ultimate"
+>("free")
 
   const fetchItems = async () => {
     const {
@@ -98,42 +112,57 @@ const [pointsLoading, setPointsLoading] = useState(true)
   }
 
 
-  const checkPremium = async () => {
+  const fetchUserPlan = async () => {
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser()
   
     if (userError || !user) {
-      setIsPremium(false)
+      setUserPlan("free")
       return
     }
   
     const {
       data,
       error,
-    } = await supabase.rpc("is_premium_user", {
+    } = await supabase.rpc("get_user_plan", {
       target_user_id: user.id,
     })
   
     if (error) {
       console.error(
-        "プレミアム判定エラー:",
+        "プラン判定エラー:",
         error
       )
   
-      setIsPremium(false)
+      setUserPlan("free")
       return
     }
   
-    setIsPremium(Boolean(data))
+    if (
+      data === "premium" ||
+      data === "ultimate"
+    ) {
+      setUserPlan(data)
+    } else {
+      setUserPlan("free")
+    }
   }
 
   useEffect(() => {
     fetchItems()
     fetchPoints()
-    checkPremium()
+    fetchUserPlan()
   }, [])
+
+  useEffect(() => {
+    if (userPlan === "premium" || userPlan === "ultimate") {
+      setAdDuration(15)
+    } else {
+      setAdDuration(7)
+    }
+  }, [userPlan])
 
   // 通常アイテム購入
   const handlePurchase = async (itemId: string) => {
@@ -570,77 +599,74 @@ if (!premiumData) {
 
             <div className="mt-3 space-y-3">
 
-              {/* 7日 */}
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-4 hover:bg-gray-50">
+             {/* 7日 */}
+<label
+  className={`flex items-center gap-3 rounded-lg border p-3 ${
+    userPlan !== "free"
+      ? "cursor-not-allowed opacity-50"
+      : "cursor-pointer"
+  }`}
+>
+  <input
+    type="radio"
+    name="adDuration"
+    value="7"
+    checked={adDuration === 7}
+    disabled={
+      adLoading ||
+      userPlan !== "free"
+    }
+    onChange={() => setAdDuration(7)}
+  />
 
-                <input
-                  type="radio"
-                  name="adDuration"
-                  value="7"
-                  checked={adDuration === 7}
-                  disabled={adLoading}
-                  onChange={() =>
-                    setAdDuration(7)
-                  }
-                />
+  <span>7日</span>
 
-                <span>
-                  7日
-                </span>
+  <span className="ml-auto font-bold">
+    {userPlan === "free"
+      ? "1,500 pt"
+      : "利用不可"}
+  </span>
+</label>
 
-                <span className="ml-auto font-bold">
-                  1,500 pt
-                </span>
+{/* 15日 */}
+<label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3">
+  <input
+    type="radio"
+    name="adDuration"
+    value="15"
+    checked={adDuration === 15}
+    disabled={adLoading}
+    onChange={() => setAdDuration(15)}
+  />
 
-              </label>
+  <span>15日</span>
 
-              {/* 15日 */}
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-4 hover:bg-gray-50">
+  <span className="ml-auto font-bold">
+    {userPlan === "free"
+      ? "2,500 pt"
+      : "0 pt"}
+  </span>
+</label>
 
-                <input
-                  type="radio"
-                  name="adDuration"
-                  value="15"
-                  checked={adDuration === 15}
-                  disabled={adLoading}
-                  onChange={() =>
-                    setAdDuration(15)
-                  }
-                />
+{/* 30日 */}
+<label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3">
+  <input
+    type="radio"
+    name="adDuration"
+    value="30"
+    checked={adDuration === 30}
+    disabled={adLoading}
+    onChange={() => setAdDuration(30)}
+  />
 
-                <span>
-                  15日
-                </span>
+  <span>30日</span>
 
-                <span className="ml-auto font-bold">
-                  2,500 pt
-                </span>
-
-              </label>
-
-              {/* 30日 */}
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-4 hover:bg-gray-50">
-
-                <input
-                  type="radio"
-                  name="adDuration"
-                  value="30"
-                  checked={adDuration === 30}
-                  disabled={adLoading}
-                  onChange={() =>
-                    setAdDuration(30)
-                  }
-                />
-
-                <span>
-                  30日
-                </span>
-
-                <span className="ml-auto font-bold">
-                  4,500 pt
-                </span>
-
-              </label>
+  <span className="ml-auto font-bold">
+    {userPlan === "free" && "4,500 pt"}
+    {userPlan === "premium" && "1,500 pt"}
+    {userPlan === "ultimate" && "0 pt"}
+  </span>
+</label>
 
             </div>
           </div>
@@ -653,10 +679,9 @@ if (!premiumData) {
             </p>
 
             <p className="mt-1 text-2xl font-bold text-gray-900">
-              {AD_PLANS[
-                adDuration
-              ].toLocaleString()}{" "}
-              pt
+            {AD_PRICES[userPlan][adDuration] !== null
+  ? `${AD_PRICES[userPlan][adDuration].toLocaleString()} pt`
+  : "利用不可"}
             </p>
 
           </div>
