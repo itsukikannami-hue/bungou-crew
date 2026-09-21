@@ -1007,17 +1007,7 @@ const BADGE_DATA: Record<string,{
         ? "処理中..."
         : "解約を予約する"}
     </button>
-    <button
-  onClick={() => handleChangePlan("premium")}
-  disabled={isChangePlanLoading}
-  className="mt-3 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
->
-  {isChangePlanLoading
-    ? "変更中..."
-    : "Premiumへプラン変更"}
-</button>
   </>
-
 )}
   </>
 ) : (
