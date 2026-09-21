@@ -905,16 +905,6 @@ const BADGE_DATA: Record<string,{
     </div>
 
     <button
-      type="button"
-      onClick={handleCancelSubscription}
-      disabled={isCancelLoading}
-      className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-    >
-      {isCancelLoading
-        ? "処理中..."
-        : "解約を予約する"}
-    </button>
-    <button
   type="button"
   onClick={() => handleChangePlan("premium")}
   disabled={isChangePlanLoading}
@@ -924,6 +914,14 @@ const BADGE_DATA: Record<string,{
     ? "変更中..."
     : "Premiumへプラン変更"}
 </button>
+<button
+      type="button"
+      onClick={handleCancelSubscription}
+      disabled={isCancelLoading}
+      className="mt-3 w-full rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isCancelLoading ? "処理中..." : "解約を予約する"}
+    </button>
   </>
 )}
 
