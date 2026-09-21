@@ -152,18 +152,18 @@ export async function POST(request: Request) {
 
     // ポイント履歴を追加
     const {
-        data: newBalance,
-        error: pointError,
-      } = await supabase.rpc(
-        "process_point_transaction",
-        {
-          p_user_id: userId,
-          p_amount: finalAmount,
-          p_type: type,
-          p_description: description.trim(),
-          p_created_by: user.id,
-        }
-      )
+      data: newBalance,
+      error: pointError,
+    } = await supabaseAdmin.rpc(
+      "process_point_transaction",
+      {
+        p_user_id: userId,
+        p_amount: finalAmount,
+        p_type: type,
+        p_description: description.trim(),
+        p_created_by: user.id,
+      }
+    )
 
       if (pointError) {
         console.error(

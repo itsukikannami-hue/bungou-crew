@@ -114,6 +114,196 @@ export async function POST(request: Request) {
 
       const userId = session.metadata?.user_id
 
+            // ----------------------------------------
+      // ポイント購入
+      // ----------------------------------------
+
+      const purchaseId =
+        session.metadata?.purchase_id
+
+      const purchasePoints =
+        session.metadata?.points
+
+      if (
+        purchaseId &&
+        purchasePoints &&
+        session.mode === "payment"
+      ) {
+        const points = Number(purchasePoints)
+
+        if (!Number.isInteger(points) || points <= 0) {
+          console.error(
+            "ポイント購入のポイント数が不正です:",
+            purchasePoints
+          )
+
+          return NextResponse.json(
+            {
+              error:
+                "ポイント購入のポイント数が不正です",
+            },
+            { status: 400 }
+          )
+        }
+
+        // ----------------------------------------
+        // point_purchases を succeeded に更新
+        // ----------------------------------------
+
+        const paymentIntentId =
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null
+
+        const { data: purchase, error: purchaseError } =
+          await supabase
+            .from("point_purchases")
+            .select(
+              "id, user_id, points, status"
+            )
+            .eq("id", purchaseId)
+            .eq("user_id", userId)
+            .maybeSingle()
+
+        if (purchaseError) {
+          console.error(
+            "ポイント購入情報取得エラー:",
+            purchaseError
+          )
+
+          return NextResponse.json(
+            {
+              error:
+                "ポイント購入情報の取得に失敗しました",
+            },
+            { status: 500 }
+          )
+        }
+
+        if (!purchase) {
+          console.error(
+            "ポイント購入情報が見つかりません:",
+            purchaseId
+          )
+
+          return NextResponse.json(
+            {
+              error:
+                "ポイント購入情報が見つかりません",
+            },
+            { status: 404 }
+          )
+        }
+
+        // ----------------------------------------
+        // すでに成功済みなら二重付与しない
+        // ----------------------------------------
+
+        if (purchase.status === "succeeded") {
+          console.log(
+            "ポイント購入はすでに処理済み:",
+            purchaseId
+          )
+
+          return NextResponse.json({
+            received: true,
+            duplicate: true,
+          })
+        }
+
+        // ----------------------------------------
+        // 購入情報を成功に更新
+        // ----------------------------------------
+
+        const { error: updatePurchaseError } =
+          await supabase
+            .from("point_purchases")
+            .update({
+              status: "succeeded",
+              stripe_checkout_session_id:
+                session.id,
+              stripe_payment_intent_id:
+                paymentIntentId,
+              amount:
+                session.amount_total ?? 0,
+              currency:
+                session.currency ?? "jpy",
+              paid_at:
+                new Date().toISOString(),
+            })
+            .eq("id", purchaseId)
+            .eq("status", "pending")
+
+        if (updatePurchaseError) {
+          console.error(
+            "ポイント購入情報更新エラー:",
+            updatePurchaseError
+          )
+
+          return NextResponse.json(
+            {
+              error:
+                "ポイント購入情報の更新に失敗しました",
+            },
+            { status: 500 }
+          )
+        }
+
+        // ----------------------------------------
+        // ポイント付与
+        // ----------------------------------------
+
+        const {
+          data: pointResult,
+          error: pointError,
+        } = await supabaseAdmin.rpc(
+          "process_point_transaction",
+          {
+            p_user_id: userId,
+            p_amount: points,
+            p_type: "point_purchase",
+            p_description:
+              `${points.toLocaleString()}pt購入`,
+            p_created_by: null,
+            p_reference_id: purchaseId,
+          }
+        )
+
+        if (pointError) {
+          console.error(
+            "ポイント購入ポイント付与エラー:",
+            pointError
+          )
+
+          return NextResponse.json(
+            {
+              error:
+                "ポイント付与に失敗しました",
+            },
+            { status: 500 }
+          )
+        }
+
+        console.log(
+          "ポイント購入完了:",
+          {
+            userId,
+            purchaseId,
+            points,
+            amount:
+              session.amount_total ?? 0,
+            referenceId:
+              purchaseId,
+            pointResult,
+          }
+        )
+
+        return NextResponse.json({
+          received: true,
+          point_purchase: true,
+        })
+      }
+
       if (!userId) {
         console.error(
           "Checkout Sessionにuser_idがありません"
@@ -146,7 +336,10 @@ export async function POST(request: Request) {
         )
       }
 
+      // ----------------------------------------
       // Stripe Subscriptionを取得
+      // ----------------------------------------
+
       const subscription =
         await stripe.subscriptions.retrieve(
           subscriptionId
@@ -157,6 +350,21 @@ export async function POST(request: Request) {
 
       const priceId =
         subscriptionItem?.price.id ?? null
+
+      const plan =
+        priceId === process.env.STRIPE_ULTIMATE_PRICE_ID
+          ? "ultimate"
+          : "premium"
+
+      const productName =
+        plan === "ultimate"
+          ? "ブンゴウクルー アルティメットプラン"
+          : "ブンゴウクルー プレミアム"
+
+      const signupPoints =
+        plan === "ultimate"
+          ? 5000
+          : 2000
 
       const currentPeriodStart =
         subscriptionItem?.current_period_start
@@ -176,28 +384,30 @@ export async function POST(request: Request) {
       // subscriptions 作成・更新
       // ----------------------------------------
 
-      const { data: savedSubscription, error: subscriptionError } =
-        await supabase
-          .from("subscriptions")
-          .upsert(
-            {
-              user_id: userId,
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscription.id,
-              status: subscription.status,
-              price_id: priceId,
-              current_period_start: currentPeriodStart,
-              current_period_end: currentPeriodEnd,
-              cancel_at_period_end:
-                subscription.cancel_at_period_end,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "stripe_subscription_id",
-            }
-          )
-          .select("id")
-          .single()
+      const {
+        data: savedSubscription,
+        error: subscriptionError,
+      } = await supabase
+        .from("subscriptions")
+        .upsert(
+          {
+            user_id: userId,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscription.id,
+            status: subscription.status,
+            price_id: priceId,
+            current_period_start: currentPeriodStart,
+            current_period_end: currentPeriodEnd,
+            cancel_at_period_end:
+              subscription.cancel_at_period_end,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "stripe_subscription_id",
+          }
+        )
+        .select("id")
+        .single()
 
       if (subscriptionError) {
         console.error(
@@ -247,8 +457,7 @@ export async function POST(request: Request) {
               user_id: userId,
               subscription_id:
                 savedSubscription?.id ?? null,
-              product_name:
-                "ブンゴウクルー プレミアム",
+              product_name: productName,
               amount:
                 session.amount_total ?? 500,
               currency:
@@ -276,7 +485,54 @@ export async function POST(request: Request) {
           )
         }
       }
+
+      // ----------------------------------------
+      // サブスク加入特典ポイント付与
+      // ----------------------------------------
+
+      const {
+        data: pointResult,
+        error: pointError,
+      } = await supabaseAdmin.rpc(
+        "process_point_transaction",
+        {
+          p_user_id: userId,
+          p_amount: signupPoints,
+          p_type: "subscription_signup",
+          p_description:
+            `${productName}加入特典`,
+          p_created_by: null,
+          p_reference_id: session.id,
+        }
+      )
+
+      if (pointError) {
+        console.error(
+          "加入特典ポイント付与エラー:",
+          pointError
+        )
+
+        return NextResponse.json(
+          {
+            error:
+              "加入特典ポイント付与に失敗しました",
+          },
+          { status: 500 }
+        )
+      }
+
+      console.log(
+        "加入特典ポイント付与完了:",
+        {
+          userId,
+          plan,
+          signupPoints,
+          referenceId: session.id,
+          pointResult,
+        }
+      )
     }
+
 
     // ----------------------------------------
     // Subscription作成・更新
@@ -425,7 +681,7 @@ export async function POST(request: Request) {
           await supabase
             .from("subscriptions")
             .select(
-              "id, user_id"
+              "id, user_id, price_id"
             )
             .eq(
               "stripe_customer_id",
@@ -434,6 +690,17 @@ export async function POST(request: Request) {
             .maybeSingle()
 
         if (subscriptionData?.user_id) {
+          const subscriptionPlan =
+  subscriptionData.price_id ===
+  process.env.STRIPE_ULTIMATE_PRICE_ID
+    ? "ultimate"
+    : "premium"
+
+const subscriptionProductName =
+  subscriptionPlan === "ultimate"
+    ? "ブンゴウクルー アルティメットプラン"
+    : "ブンゴウクルー プレミアム"
+
           const { data: existingPayment } =
             await supabase
               .from("payments")
@@ -454,7 +721,7 @@ export async function POST(request: Request) {
                   subscription_id:
                     subscriptionData.id,
                   product_name:
-                    "ブンゴウクルー プレミアム",
+                    subscriptionProductName,
                   amount:
                     invoice.amount_paid ?? 0,
                   currency:
@@ -486,6 +753,107 @@ export async function POST(request: Request) {
               )
             }
           }
+
+                    // ----------------------------------------
+          // 毎月のアイテム付与
+          // ----------------------------------------
+
+          const grantMonth = new Date(
+            invoice.created * 1000
+          )
+            .toISOString()
+            .slice(0, 7) + "-01"
+
+          const habitRecoveryItemId =
+            "e98e579f-67c7-4e24-9b9b-7c21fca772d7"
+
+          const expBoostItemId =
+            "5d0ef037-481e-4eeb-be6d-836aa9a7e07f"
+
+          const monthlyItemQuantity =
+            subscriptionPlan === "ultimate"
+              ? 2
+              : 1
+
+          // 習慣リカバリー
+          const {
+            data: habitRecoveryResult,
+            error: habitRecoveryError,
+          } = await supabaseAdmin.rpc(
+            "grant_subscription_monthly_items",
+            {
+              p_user_id:
+                subscriptionData.user_id,
+              p_subscription_id:
+                subscriptionData.id,
+              p_grant_month:
+                grantMonth,
+              p_item_id:
+                habitRecoveryItemId,
+              p_quantity:
+                monthlyItemQuantity,
+            }
+          )
+
+          if (habitRecoveryError) {
+            console.error(
+              "習慣リカバリー月次付与エラー:",
+              habitRecoveryError
+            )
+
+            return NextResponse.json(
+              {
+                error:
+                  "習慣リカバリーの月次付与に失敗しました",
+              },
+              { status: 500 }
+            )
+          }
+
+          console.log(
+            "習慣リカバリー月次付与:",
+            habitRecoveryResult
+          )
+
+          // EXPブースト
+          const {
+            data: expBoostResult,
+            error: expBoostError,
+          } = await supabaseAdmin.rpc(
+            "grant_subscription_monthly_items",
+            {
+              p_user_id:
+                subscriptionData.user_id,
+              p_subscription_id:
+                subscriptionData.id,
+              p_grant_month:
+                grantMonth,
+              p_item_id:
+                expBoostItemId,
+              p_quantity:
+                monthlyItemQuantity,
+            }
+          )
+
+          if (expBoostError) {
+            console.error(
+              "EXPブースト月次付与エラー:",
+              expBoostError
+            )
+
+            return NextResponse.json(
+              {
+                error:
+                  "EXPブーストの月次付与に失敗しました",
+              },
+              { status: 500 }
+            )
+          }
+
+          console.log(
+            "EXPブースト月次付与:",
+            expBoostResult
+          )
         }
       }
     }
@@ -515,9 +883,7 @@ export async function POST(request: Request) {
         const { data: subscriptionData } =
           await supabase
             .from("subscriptions")
-            .select(
-              "id, user_id"
-            )
+            .select("id, user_id, price_id")
             .eq(
               "stripe_customer_id",
               customerId
@@ -525,6 +891,17 @@ export async function POST(request: Request) {
             .maybeSingle()
 
         if (subscriptionData?.user_id) {
+          const subscriptionPlan =
+  subscriptionData.price_id ===
+  process.env.STRIPE_ULTIMATE_PRICE_ID
+    ? "ultimate"
+    : "premium"
+
+const subscriptionProductName =
+  subscriptionPlan === "ultimate"
+    ? "ブンゴウクルー アルティメットプラン"
+    : "ブンゴウクルー プレミアム"
+
           const { data: existingPayment } =
             await supabase
               .from("payments")
@@ -544,8 +921,7 @@ export async function POST(request: Request) {
                     subscriptionData.user_id,
                   subscription_id:
                     subscriptionData.id,
-                  product_name:
-                    "ブンゴウクルー プレミアム",
+                  product_name: subscriptionProductName,
                   amount:
                     invoice.amount_due ?? 0,
                   currency:

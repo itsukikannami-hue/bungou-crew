@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { stripe } from "@/lib/stripe"
 import { createClient } from "@/lib/supabaseServer"
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     // ----------------------------------------
     // Supabaseユーザー取得
@@ -25,13 +25,37 @@ export async function POST() {
     }
 
     // ----------------------------------------
+    // リクエスト内容取得
+    // ----------------------------------------
+
+    const body = await request.json().catch(() => ({}))
+
+    const plan = body?.plan
+
+    // ----------------------------------------
+    // プラン確認
+    // ----------------------------------------
+
+    if (plan !== "premium" && plan !== "ultimate") {
+      return NextResponse.json(
+        {
+          error: "料金プランが不正です",
+        },
+        { status: 400 }
+      )
+    }
+
+    // ----------------------------------------
     // Stripe Price ID
     // ----------------------------------------
 
-    const priceId =
+    const premiumPriceId =
       process.env.STRIPE_PREMIUM_PRICE_ID
 
-    if (!priceId) {
+    const ultimatePriceId =
+      process.env.STRIPE_ULTIMATE_PRICE_ID
+
+    if (!premiumPriceId) {
       console.error(
         "STRIPE_PREMIUM_PRICE_ID is not configured"
       )
@@ -39,11 +63,34 @@ export async function POST() {
       return NextResponse.json(
         {
           error:
-            "Stripe Price IDが設定されていません",
+            "500円プランのStripe Price IDが設定されていません",
         },
         { status: 500 }
       )
     }
+
+    if (!ultimatePriceId) {
+      console.error(
+        "STRIPE_ULTIMATE_PRICE_ID is not configured"
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "980円プランのStripe Price IDが設定されていません",
+        },
+        { status: 500 }
+      )
+    }
+
+    // ----------------------------------------
+    // 選択されたプランのPrice ID
+    // ----------------------------------------
+
+    const priceId =
+      plan === "premium"
+        ? premiumPriceId
+        : ultimatePriceId
 
     // ----------------------------------------
     // 既存のサブスクリプション確認
@@ -102,15 +149,17 @@ export async function POST() {
     // ----------------------------------------
     // Stripe Customer
     // ----------------------------------------
+
     const customer =
-    await stripe.customers.create({
-      email: user.email ?? undefined,
-      metadata: {
-        user_id: user.id,
-      },
-    })
-  
-  const customerId = customer.id
+      await stripe.customers.create({
+        email: user.email ?? undefined,
+
+        metadata: {
+          user_id: user.id,
+        },
+      })
+
+    const customerId = customer.id
 
     // ----------------------------------------
     // Stripe Checkout Session
@@ -135,11 +184,13 @@ export async function POST() {
 
         metadata: {
           user_id: user.id,
+          plan,
         },
 
         subscription_data: {
           metadata: {
             user_id: user.id,
+            plan,
           },
         },
 

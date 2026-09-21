@@ -229,7 +229,9 @@ return
     }
 
 
-    const startCheckout = async () => {
+    const startCheckout = async (
+      plan: "premium" | "ultimate"
+    ) => {
       if (!user) {
         alert("ログインが必要です")
         return
@@ -245,6 +247,9 @@ return
             headers: {
               "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+              plan,
+            }),
           }
         )
     
@@ -620,7 +625,7 @@ const BADGE_DATA: Record<string,{
       </div>
 
 
-      {/* =========================
+{/* =========================
     プレミアムプラン
 ========================= */}
 <div className="px-4 pb-4">
@@ -629,11 +634,11 @@ const BADGE_DATA: Record<string,{
     {isPremium ? (
       <>
         <div className="text-lg font-bold">
-          ✨ プレミアム会員
+          ✨ 有料プラン会員
         </div>
 
         <div className="text-sm text-green-600 font-bold mt-2">
-          現在プレミアム会員です
+          現在、有料プランを契約中です
         </div>
 
         {premiumSubscription?.current_period_end && (
@@ -658,26 +663,71 @@ const BADGE_DATA: Record<string,{
     ) : (
       <>
         <div className="text-lg font-bold">
-          ✨ ブンゴウクルー プレミアム
-        </div>
-
-        <div className="text-2xl font-bold mt-2">
-          月額500円
+          ✨ ブンゴウクルー 有料プラン
         </div>
 
         <div className="text-sm text-gray-500 mt-2">
-          プレミアム会員になると、今後追加されるプレミアム機能をご利用いただけます。
+          より便利にブンゴウクルーを楽しめる有料プランです。
         </div>
 
-        <button
-          onClick={startCheckout}
-          disabled={isCheckoutLoading}
-          className="mt-4 w-full bg-black text-white rounded-lg py-3 font-bold disabled:opacity-50"
-        >
-          {isCheckoutLoading
-            ? "Stripeへ移動中..."
-            : "プレミアムに登録する"}
-        </button>
+        {/* 500円プラン */}
+        <div className="mt-5 border rounded-xl p-4">
+          <div className="font-bold text-lg">
+            プレミアムプラン
+          </div>
+
+          <div className="text-2xl font-bold mt-2">
+            月額500円
+          </div>
+
+          <div className="text-sm text-gray-600 mt-3 space-y-1">
+            <div>🎁 加入時 2,000pt</div>
+            <div>🎁 習慣リカバリー ×1</div>
+            <div>🎁 EXPブースト ×1</div>
+            <div>📊 より詳細な執筆統計</div>
+            <div>📢 おすすめタイムラインで少し優先表示</div>
+          </div>
+
+          <button
+            onClick={() => startCheckout("premium")}
+            disabled={isCheckoutLoading}
+            className="mt-4 w-full bg-black text-white rounded-lg py-3 font-bold disabled:opacity-50"
+          >
+            {isCheckoutLoading
+              ? "Stripeへ移動中..."
+              : "プレミアムに登録する"}
+          </button>
+        </div>
+
+        {/* 980円プラン */}
+        <div className="mt-4 border-2 rounded-xl p-4">
+          <div className="font-bold text-lg">
+            アルティメットプラン
+          </div>
+
+          <div className="text-2xl font-bold mt-2">
+            月額980円
+          </div>
+
+          <div className="text-sm text-gray-600 mt-3 space-y-1">
+            <div>🎁 加入時 5,000pt</div>
+            <div>🎁 習慣リカバリー ×2</div>
+            <div>🎁 EXPブースト ×2</div>
+            <div>📊 高度な執筆統計</div>
+            <div>📈 週間・月間の成長分析</div>
+            <div>📢 おすすめタイムラインでより優先表示</div>
+          </div>
+
+          <button
+            onClick={() => startCheckout("ultimate")}
+            disabled={isCheckoutLoading}
+            className="mt-4 w-full bg-black text-white rounded-lg py-3 font-bold disabled:opacity-50"
+          >
+            {isCheckoutLoading
+              ? "Stripeへ移動中..."
+              : "アルティメットに登録する"}
+          </button>
+        </div>
       </>
     )}
 
