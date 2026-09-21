@@ -915,13 +915,14 @@ const BADGE_DATA: Record<string,{
         : "解約を予約する"}
     </button>
     <button
-  onClick={() => handleChangePlan("ultimate")}
+  type="button"
+  onClick={() => handleChangePlan("premium")}
   disabled={isChangePlanLoading}
   className="mt-3 w-full rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
 >
   {isChangePlanLoading
     ? "変更中..."
-    : "Ultimateへプラン変更"}
+    : "Premiumへプラン変更"}
 </button>
   </>
 )}
@@ -996,13 +997,14 @@ const BADGE_DATA: Record<string,{
     <div className="mt-2 text-sm text-green-600">契約中</div>
 
     <button
-  onClick={() => handleChangePlan("premium")}
+  type="button"
+  onClick={() => handleChangePlan("ultimate")}
   disabled={isChangePlanLoading}
   className="mt-3 w-full rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
 >
   {isChangePlanLoading
     ? "変更中..."
-    : "Premiumへプラン変更"}
+    : "Ultimateへプラン変更"}
 </button>
 
     <button
