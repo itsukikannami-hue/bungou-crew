@@ -993,19 +993,25 @@ const BADGE_DATA: Record<string,{
 
 {!premiumSubscription?.cancel_at_period_end && (
   <>
-    <div className="mt-2 text-sm text-green-600">
-      契約中
-    </div>
+    <div className="mt-2 text-sm text-green-600">契約中</div>
+
+    <button
+  onClick={() => handleChangePlan("premium")}
+  disabled={isChangePlanLoading}
+  className="mt-3 w-full rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {isChangePlanLoading
+    ? "変更中..."
+    : "Premiumへプラン変更"}
+</button>
 
     <button
       type="button"
       onClick={handleCancelSubscription}
       disabled={isCancelLoading}
-      className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+      className="mt-3 w-full rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {isCancelLoading
-        ? "処理中..."
-        : "解約を予約する"}
+      {isCancelLoading ? "処理中..." : "解約を予約する"}
     </button>
   </>
 )}
