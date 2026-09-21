@@ -249,32 +249,7 @@ if (userError || !user) {
   return
 }
 
-// ② プレミアム会員確認
-const {
-  data: premiumData,
-  error: premiumError,
-} = await supabase.rpc("is_premium_user", {
-  target_user_id: user.id,
-})
 
-if (premiumError) {
-  console.error(
-    "プレミアム判定エラー:",
-    premiumError
-  )
-
-  alert(
-    "プレミアム会員情報の確認に失敗しました。"
-  )
-  return
-}
-
-if (!premiumData) {
-  alert(
-    "広告出稿はプレミアム会員限定です。"
-  )
-  return
-}
 
       // ② 広告画像をStorageへアップロード
       const fileExtension =
