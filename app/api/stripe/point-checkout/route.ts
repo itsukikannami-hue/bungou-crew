@@ -5,6 +5,8 @@ import { cookies } from "next/headers"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+console.log("STRIPE_POINT_100_PRICE_ID:", process.env.STRIPE_POINT_100_PRICE_ID)
+console.log("STRIPE_POINT_100_PRICE_ID exists:", !!process.env.STRIPE_POINT_100_PRICE_ID)
 
 const POINT_PACKS = {
     100: {
