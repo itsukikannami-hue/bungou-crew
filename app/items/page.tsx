@@ -40,11 +40,8 @@ const [pointsLoading, setPointsLoading] = useState(true)
 
   // 広告出稿フォーム
   const [showAdForm, setShowAdForm] = useState(false)
-  const [adTitle, setAdTitle] = useState("")
-  const [adGenre, setAdGenre] = useState("")
   const [adMessage, setAdMessage] = useState("")
   const [adLinkUrl, setAdLinkUrl] = useState("")
-  const [adImage, setAdImage] = useState<File | null>(null)
   const [adDuration, setAdDuration] = useState<7 | 15 | 30>(7)
   const [adLoading, setAdLoading] = useState(false)
   const [userPlan, setUserPlan] = useState<
@@ -202,94 +199,36 @@ const [pointsLoading, setPointsLoading] = useState(true)
 
   // 広告出稿
   const handleAdSubmit = async () => {
-    if (!adTitle.trim()) {
-      alert("広告タイトルを入力してください。")
+    if (!adMessage.trim()) {
+      alert("広告メッセージを入力してください。")
       return
     }
-
+  
+    if (adMessage.trim().length > 140) {
+      alert("広告メッセージは140文字以内にしてください。")
+      return
+    }
+  
     if (!adLinkUrl.trim()) {
       alert("作品ページURLを入力してください。")
       return
     }
-
-    if (!adImage) {
-      alert("広告画像を選択してください。")
-      return
-    }
-
-    if (adImage.size > 5 * 1024 * 1024) {
-      alert("広告画像は5MB以下にしてください。")
-      return
-    }
-
-    if (
-      ![
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-      ].includes(adImage.type)
-    ) {
-      alert(
-        "広告画像はPNG、JPEG、WebPのみ使用できます。"
-      )
-      return
-    }
-
+  
     setAdLoading(true)
-
+  
     try {
       // ① ログイン確認
-const {
-  data: { user },
-  error: userError,
-} = await supabase.auth.getUser()
-
-if (userError || !user) {
-  alert("ログインが必要です。")
-  return
-}
-
-
-
-      // ② 広告画像をStorageへアップロード
-      const fileExtension =
-        adImage.name.split(".").pop()?.toLowerCase() ||
-        "jpg"
-
-      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExtension}`
-
       const {
-        error: uploadError,
-      } = await supabase.storage
-      .from("ad-images")
-        .upload(filePath, adImage, {
-          contentType: adImage.type,
-          upsert: false,
-        })
-
-      if (uploadError) {
-        console.error(
-          "広告画像アップロードエラー:",
-          uploadError
-        )
-
-        alert(
-          "広告画像のアップロードに失敗しました。"
-        )
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+  
+      if (userError || !user) {
+        alert("ログインが必要です。")
         return
       }
-
-      // ③ Storageの公開URL取得
-      const {
-        data: publicUrlData,
-      } = supabase.storage
-      .from("ad-images")
-        .getPublicUrl(filePath)
-
-      const imageUrl =
-        publicUrlData.publicUrl
-
-      // ④ 広告出稿APIを呼び出す
+  
+      // ② 広告出稿APIを呼び出す
       const response = await fetch(
         "/api/ads/create",
         {
@@ -298,47 +237,47 @@ if (userError || !user) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            title: adTitle.trim(),
+            message: adMessage.trim(),
             linkUrl: adLinkUrl.trim(),
-            imageUrl,
             durationDays: adDuration,
           }),
         }
       )
-
+  
       const result = await response.json()
-
+  
       if (!response.ok) {
         console.error(
           "広告出稿APIエラー:",
           result
         )
-
+  
         alert(
           result.error ||
             "広告の出稿に失敗しました。"
         )
-
+  
         return
       }
-
-      // ⑤ 成功
+  
+      // ③ 成功
       alert(
         `${adDuration}日間の広告を出稿しました。`
       )
-
+  
       // フォームをリセット
-      setAdTitle("")
+      setAdMessage("")
       setAdLinkUrl("")
-      setAdImage(null)
-      setAdDuration(7)
+      setAdDuration(
+        userPlan === "free" ? 7 : 15
+      )
       setShowAdForm(false)
     } catch (error) {
       console.error(
         "広告出稿エラー:",
         error
       )
-
+  
       alert(
         "広告出稿処理に失敗しました。"
       )
@@ -462,24 +401,7 @@ if (userError || !user) {
           <p className="mt-2 text-sm text-gray-500">
             あなたの作品をブンゴウクルー内で宣伝できます。
           </p>
-{/* 広告タイトル */}
-<div className="mt-5">
-  <label className="block text-sm font-medium text-gray-700">
-    広告タイトル
-  </label>
 
-  <input
-    type="text"
-    value={adTitle}
-    onChange={(e) =>
-      setAdTitle(e.target.value)
-    }
-    placeholder="例：あなたの作品を読んでください！"
-    maxLength={100}
-    disabled={adLoading}
-    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black disabled:bg-gray-100"
-  />
-</div>
 
           {/* 作品ページURL */}
           <div className="mt-5">
@@ -501,61 +423,28 @@ if (userError || !user) {
 
           </div>
 
-{/* 広告画像 */}
+{/* 広告メッセージ */}
 <div className="mt-5">
   <label className="block text-sm font-medium text-gray-700">
-    広告画像
-  </label>
-
-  <input
-    type="file"
-    accept="image/png,image/jpeg,image/webp"
-    onChange={(e) =>
-      setAdImage(
-        e.target.files?.[0] ?? null
-      )
-    }
-    disabled={adLoading}
-    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm disabled:bg-gray-100"
-  />
-
-  <p className="mt-2 text-xs text-gray-500">
-    PNG、JPEG、WebP / 5MB以下
-  </p>
-</div>
-
-          <div className="mt-6">
-  <label className="block text-sm font-medium text-gray-700">
-    執筆しているジャンル
-  </label>
-
-  <input
-    type="text"
-    value={adGenre}
-    onChange={(e) => setAdGenre(e.target.value)}
-    placeholder="例：異世界ファンタジー"
-    maxLength={50}
-    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-  />
-</div>
-
-<div className="mt-5">
-  <label className="block text-sm font-medium text-gray-700">
-    メッセージ
+    広告メッセージ
   </label>
 
   <textarea
     value={adMessage}
-    onChange={(e) => setAdMessage(e.target.value)}
+    onChange={(e) =>
+      setAdMessage(e.target.value)
+    }
     placeholder="読者へのメッセージを入力してください"
-    maxLength={200}
+    maxLength={140}
     rows={4}
-    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+    disabled={adLoading}
+    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black disabled:bg-gray-100"
   />
 
-  <p className="mt-2 text-xs text-gray-500">
-    最大200文字
-  </p>
+  <div className="mt-2 flex justify-between text-xs text-gray-500">
+    <span>読者に伝えたいメッセージを入力してください。</span>
+    <span>{adMessage.length} / 140文字</span>
+  </div>
 </div>
 
 
