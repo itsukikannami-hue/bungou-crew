@@ -114,197 +114,230 @@ export async function POST(request: Request) {
 
       const userId = session.metadata?.user_id
 
-            // ----------------------------------------
-      // ポイント購入
-      // ----------------------------------------
+      let isPointPurchase = false
+// ----------------------------------------
+// ポイント購入
+// ----------------------------------------
 
-      const purchaseId =
-        session.metadata?.purchase_id
+const purchaseId =
+  session.metadata?.purchase_id
 
-      const purchasePoints =
-        session.metadata?.points
+const purchasePoints =
+  session.metadata?.points
 
-      if (
-        purchaseId &&
-        purchasePoints &&
-        session.mode === "payment"
-      ) {
-        const points = Number(purchasePoints)
+if (
+  purchaseId &&
+  purchasePoints &&
+  session.mode === "payment"
+) {
+  isPointPurchase = true
+  const points = Number(purchasePoints)
 
-        if (!Number.isInteger(points) || points <= 0) {
-          console.error(
-            "ポイント購入のポイント数が不正です:",
-            purchasePoints
-          )
+  if (!Number.isInteger(points) || points <= 0) {
+    console.error(
+      "ポイント購入のポイント数が不正です:",
+      purchasePoints
+    )
 
-          return NextResponse.json(
-            {
-              error:
-                "ポイント購入のポイント数が不正です",
-            },
-            { status: 400 }
-          )
-        }
+    return NextResponse.json(
+      {
+        error:
+          "ポイント購入のポイント数が不正です",
+      },
+      { status: 400 }
+    )
+  }
 
-        // ----------------------------------------
-        // point_purchases を succeeded に更新
-        // ----------------------------------------
+  if (!userId) {
+    console.error(
+      "ポイント購入Checkout Sessionにuser_idがありません"
+    )
 
-        const paymentIntentId =
-          typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : session.payment_intent?.id ?? null
+    return NextResponse.json(
+      { error: "user_idがありません" },
+      { status: 400 }
+    )
+  }
 
-        const { data: purchase, error: purchaseError } =
-          await supabase
-            .from("point_purchases")
-            .select(
-              "id, user_id, points, status"
-            )
-            .eq("id", purchaseId)
-            .eq("user_id", userId)
-            .maybeSingle()
+  // ----------------------------------------
+  // point_purchases を取得
+  // ----------------------------------------
 
-        if (purchaseError) {
-          console.error(
-            "ポイント購入情報取得エラー:",
-            purchaseError
-          )
+  const {
+    data: purchase,
+    error: purchaseError,
+  } = await supabase
+    .from("point_purchases")
+    .select(
+      "id, user_id, points, status"
+    )
+    .eq("id", purchaseId)
+    .eq("user_id", userId)
+    .maybeSingle()
 
-          return NextResponse.json(
-            {
-              error:
-                "ポイント購入情報の取得に失敗しました",
-            },
-            { status: 500 }
-          )
-        }
+  if (purchaseError) {
+    console.error(
+      "ポイント購入情報取得エラー:",
+      purchaseError
+    )
 
-        if (!purchase) {
-          console.error(
-            "ポイント購入情報が見つかりません:",
-            purchaseId
-          )
+    return NextResponse.json(
+      {
+        error:
+          "ポイント購入情報の取得に失敗しました",
+      },
+      { status: 500 }
+    )
+  }
 
-          return NextResponse.json(
-            {
-              error:
-                "ポイント購入情報が見つかりません",
-            },
-            { status: 404 }
-          )
-        }
+  if (!purchase) {
+    console.error(
+      "ポイント購入情報が見つかりません:",
+      purchaseId
+    )
 
-        // ----------------------------------------
-        // すでに成功済みなら二重付与しない
-        // ----------------------------------------
+    return NextResponse.json(
+      {
+        error:
+          "ポイント購入情報が見つかりません",
+      },
+      { status: 404 }
+    )
+  }
 
-        if (purchase.status === "succeeded") {
-          console.log(
-            "ポイント購入はすでに処理済み:",
-            purchaseId
-          )
+  // ----------------------------------------
+  // DBの購入ポイント数とWebhookのポイント数を確認
+  // ----------------------------------------
 
-          return NextResponse.json({
-            received: true,
-            duplicate: true,
-          })
-        }
-
-        // ----------------------------------------
-        // 購入情報を成功に更新
-        // ----------------------------------------
-
-        const { error: updatePurchaseError } =
-          await supabase
-            .from("point_purchases")
-            .update({
-              status: "succeeded",
-              stripe_checkout_session_id:
-                session.id,
-              stripe_payment_intent_id:
-                paymentIntentId,
-              amount:
-                session.amount_total ?? 0,
-              currency:
-                session.currency ?? "jpy",
-              paid_at:
-                new Date().toISOString(),
-            })
-            .eq("id", purchaseId)
-            .eq("status", "pending")
-
-        if (updatePurchaseError) {
-          console.error(
-            "ポイント購入情報更新エラー:",
-            updatePurchaseError
-          )
-
-          return NextResponse.json(
-            {
-              error:
-                "ポイント購入情報の更新に失敗しました",
-            },
-            { status: 500 }
-          )
-        }
-
-        // ----------------------------------------
-        // ポイント付与
-        // ----------------------------------------
-
-        const {
-          data: pointResult,
-          error: pointError,
-        } = await supabaseAdmin.rpc(
-          "process_point_transaction",
-          {
-            p_user_id: userId,
-            p_amount: points,
-            p_type: "point_purchase",
-            p_description:
-              `${points.toLocaleString()}pt購入`,
-            p_created_by: null,
-            p_reference_id: purchaseId,
-          }
-        )
-
-        if (pointError) {
-          console.error(
-            "ポイント購入ポイント付与エラー:",
-            pointError
-          )
-
-          return NextResponse.json(
-            {
-              error:
-                "ポイント付与に失敗しました",
-            },
-            { status: 500 }
-          )
-        }
-
-        console.log(
-          "ポイント購入完了:",
-          {
-            userId,
-            purchaseId,
-            points,
-            amount:
-              session.amount_total ?? 0,
-            referenceId:
-              purchaseId,
-            pointResult,
-          }
-        )
-
-        return NextResponse.json({
-          received: true,
-          point_purchase: true,
-        })
+  if (purchase.points !== points) {
+    console.error(
+      "ポイント数が一致しません:",
+      {
+        purchasePoints: purchase.points,
+        metadataPoints: points,
+        purchaseId,
       }
+    )
 
-      if (!userId) {
+    return NextResponse.json(
+      {
+        error:
+          "ポイント購入情報が一致しません",
+      },
+      { status: 400 }
+    )
+  }
+
+  // ----------------------------------------
+  // 決済情報
+  // ----------------------------------------
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null
+
+  // ----------------------------------------
+  // 購入情報を成功に更新
+  // ----------------------------------------
+
+  if (purchase.status !== "succeeded") {
+    const {
+      error: updatePurchaseError,
+    } = await supabase
+      .from("point_purchases")
+      .update({
+        status: "succeeded",
+        stripe_checkout_session_id:
+          session.id,
+        stripe_payment_intent_id:
+          paymentIntentId,
+        amount:
+          session.amount_total ?? 0,
+        currency:
+          session.currency ?? "jpy",
+        paid_at:
+          new Date().toISOString(),
+      })
+      .eq("id", purchaseId)
+      .eq("status", "pending")
+
+    if (updatePurchaseError) {
+      console.error(
+        "ポイント購入情報更新エラー:",
+        updatePurchaseError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "ポイント購入情報の更新に失敗しました",
+        },
+        { status: 500 }
+      )
+    }
+  }
+
+  // ----------------------------------------
+  // ポイント付与
+  // ----------------------------------------
+  //
+  // process_point_transaction は
+  // reference_id = purchaseId を使って
+  // 二重付与を防止する
+  // ----------------------------------------
+
+  const {
+    data: pointResult,
+    error: pointError,
+  } = await supabaseAdmin.rpc(
+    "process_point_transaction",
+    {
+      p_user_id: userId,
+      p_amount: points,
+      p_type: "point_purchase",
+      p_description:
+        `${points.toLocaleString()}pt購入`,
+      p_created_by: null,
+      p_reference_id: purchaseId,
+    }
+  )
+
+  if (pointError) {
+    console.error(
+      "ポイント購入ポイント付与エラー:",
+      pointError
+    )
+
+    return NextResponse.json(
+      {
+        error:
+          "ポイント付与に失敗しました",
+      },
+      { status: 500 }
+    )
+  }
+
+  console.log(
+    "ポイント購入完了:",
+    {
+      userId,
+      purchaseId,
+      points,
+      amount:
+        session.amount_total ?? 0,
+      referenceId:
+        purchaseId,
+      pointResult,
+    }
+  )
+
+  // ここではreturnしない
+  // ↓
+  // この後のstripe_events処理済み更新まで進める
+}
+if (!isPointPurchase) {
+  if (!userId) {
         console.error(
           "Checkout Sessionにuser_idがありません"
         )
@@ -532,6 +565,7 @@ export async function POST(request: Request) {
         }
       )
     }
+  }
 
 
     // ----------------------------------------

@@ -7,43 +7,52 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin"
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 const POINT_PACKS = {
-  100: {
-    points: 100,
-    priceId: process.env.STRIPE_POINT_100_PRICE_ID!,
-  },
-  300: {
-    points: 300,
-    priceId: process.env.STRIPE_POINT_300_PRICE_ID!,
-  },
-  500: {
-    points: 500,
-    priceId: process.env.STRIPE_POINT_500_PRICE_ID!,
-  },
-  1000: {
-    points: 1000,
-    priceId: process.env.STRIPE_POINT_1000_PRICE_ID!,
-  },
-  3000: {
-    points: 3000,
-    priceId: process.env.STRIPE_POINT_3000_PRICE_ID!,
-  },
-  5000: {
-    points: 5000,
-    priceId: process.env.STRIPE_POINT_5000_PRICE_ID!,
-  },
-  10000: {
-    points: 10000,
-    priceId: process.env.STRIPE_POINT_10000_PRICE_ID!,
-  },
-  20000: {
-    points: 20000,
-    priceId: process.env.STRIPE_POINT_20000_PRICE_ID!,
-  },
-  30000: {
-    points: 30000,
-    priceId: process.env.STRIPE_POINT_30000_PRICE_ID!,
-  },
-} as const
+    100: {
+      points: 100,
+      amount: 100,
+      priceId: process.env.STRIPE_POINT_100_PRICE_ID!,
+    },
+    300: {
+      points: 300,
+      amount: 300,
+      priceId: process.env.STRIPE_POINT_300_PRICE_ID!,
+    },
+    500: {
+      points: 500,
+      amount: 500,
+      priceId: process.env.STRIPE_POINT_500_PRICE_ID!,
+    },
+    1000: {
+      points: 1000,
+      amount: 980,
+      priceId: process.env.STRIPE_POINT_1000_PRICE_ID!,
+    },
+    3000: {
+      points: 3000,
+      amount: 2980,
+      priceId: process.env.STRIPE_POINT_3000_PRICE_ID!,
+    },
+    5000: {
+      points: 5000,
+      amount: 4980,
+      priceId: process.env.STRIPE_POINT_5000_PRICE_ID!,
+    },
+    10000: {
+      points: 10000,
+      amount: 9800,
+      priceId: process.env.STRIPE_POINT_10000_PRICE_ID!,
+    },
+    20000: {
+      points: 20000,
+      amount: 19800,
+      priceId: process.env.STRIPE_POINT_20000_PRICE_ID!,
+    },
+    30000: {
+      points: 30000,
+      amount: 29800,
+      priceId: process.env.STRIPE_POINT_30000_PRICE_ID!,
+    },
+  } as const
 
 export async function POST(request: Request) {
   try {
@@ -126,7 +135,7 @@ export async function POST(request: Request) {
         id: purchaseId,
         user_id: user.id,
         points: pointPack.points,
-        amount: 0,
+        amount: pointPack.amount,
         currency: "jpy",
         status: "pending",
       })

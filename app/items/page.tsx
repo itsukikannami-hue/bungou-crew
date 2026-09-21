@@ -23,6 +23,8 @@ const AD_PLANS = {
 export default function ItemsPage() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
+  const [points, setPoints] = useState(0)
+const [pointsLoading, setPointsLoading] = useState(true)
 
   // 広告出稿フォーム
   const [showAdForm, setShowAdForm] = useState(false)
@@ -62,6 +64,39 @@ export default function ItemsPage() {
     setLoading(false)
   }
 
+  const fetchPoints = async () => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+  
+    if (userError || !user) {
+      setPoints(0)
+      setPointsLoading(false)
+      return
+    }
+  
+    const { data, error } = await supabase
+      .from("user_points")
+      .select("points")
+      .eq("user_id", user.id)
+      .maybeSingle()
+  
+    if (error) {
+      console.error(
+        "ポイント残高取得エラー:",
+        error
+      )
+  
+      setPoints(0)
+      setPointsLoading(false)
+      return
+    }
+  
+    setPoints(data?.points ?? 0)
+    setPointsLoading(false)
+  }
+
 
   const checkPremium = async () => {
     const {
@@ -96,6 +131,7 @@ export default function ItemsPage() {
 
   useEffect(() => {
     fetchItems()
+    fetchPoints()
     checkPremium()
   }, [])
 
@@ -318,9 +354,28 @@ if (!premiumData) {
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+<main className="mx-auto max-w-5xl p-6">
 
-      {/* アイテムショップ */}
+{/* ポイント残高 */}
+<section className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+  <p className="text-sm font-medium text-gray-500">
+    現在のポイント
+  </p>
+
+  {pointsLoading ? (
+    <p className="mt-2 text-gray-400">
+      読み込み中...
+    </p>
+  ) : (
+    <p className="mt-1 text-3xl font-bold text-gray-900">
+      {points.toLocaleString()} pt
+    </p>
+  )}
+</section>
+
+
+
+{/* アイテムショップ */}
       <h1 className="text-3xl font-bold text-gray-900">
         アイテムショップ
       </h1>
@@ -634,6 +689,81 @@ if (!premiumData) {
 
         </section>
       )}
+
+      {/* ポイント購入 */}
+<section className="mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+  <h2 className="text-2xl font-bold text-gray-900">
+    ポイントを購入
+  </h2>
+
+  <p className="mt-2 text-sm text-gray-500">
+    ポイントを購入して、アイテムや広告出稿に利用できます。
+  </p>
+
+  <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+    {[
+      { points: 100, amount: 100 },
+      { points: 300, amount: 300 },
+      { points: 500, amount: 500 },
+      { points: 1000, amount: 980 },
+      { points: 3000, amount: 2980 },
+      { points: 5000, amount: 4980 },
+      { points: 10000, amount: 9800 },
+      { points: 20000, amount: 19800 },
+      { points: 30000, amount: 29800 },
+    ].map((pack) => (
+      <div
+        key={pack.points}
+        className="rounded-xl border border-gray-200 p-5"
+      >
+        <p className="text-2xl font-bold text-gray-900">
+          {pack.points.toLocaleString()} pt
+        </p>
+
+        <p className="mt-2 text-sm text-gray-500">
+          ¥{pack.amount.toLocaleString()}
+        </p>
+
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const response = await fetch("/api/stripe/point-checkout", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  points: pack.points,
+                }),
+              })
+
+              const result = await response.json()
+
+              if (!response.ok) {
+                alert(result.error || "ポイント購入に失敗しました。")
+                return
+              }
+
+              if (!result.url) {
+                alert("Stripe決済ページを取得できませんでした。")
+                return
+              }
+
+              window.location.href = result.url
+            } catch (error) {
+              console.error("ポイント購入エラー:", error)
+              alert("ポイント購入処理に失敗しました。")
+            }
+          }}
+          className="mt-4 w-full rounded-xl bg-black px-4 py-3 font-bold text-white hover:bg-gray-800"
+        >
+          購入する
+        </button>
+      </div>
+    ))}
+  </div>
+</section>
 
     </main>
   )
