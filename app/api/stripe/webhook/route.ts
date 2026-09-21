@@ -788,106 +788,143 @@ const subscriptionProductName =
             }
           }
 
-                    // ----------------------------------------
-          // 毎月のアイテム付与
+
+
+
           // ----------------------------------------
+// 毎月のアイテム付与
+// ----------------------------------------
+//
+// 初回契約:
+// subscription_create → 付与
+//
+// 通常の月次更新:
+// subscription_cycle → 付与
+//
+// プラン変更:
+// subscription_update → 付与しない
+// ----------------------------------------
 
-          const grantMonth = new Date(
-            invoice.created * 1000
-          )
-            .toISOString()
-            .slice(0, 7) + "-01"
+const billingReason =
+invoice.billing_reason
 
-          const habitRecoveryItemId =
-            "e98e579f-67c7-4e24-9b9b-7c21fca772d7"
+console.log(
+"Invoice billing reason:",
+{
+  invoiceId: invoice.id,
+  billingReason,
+}
+)
 
-          const expBoostItemId =
-            "5d0ef037-481e-4eeb-be6d-836aa9a7e07f"
+if (
+billingReason === "subscription_create" ||
+billingReason === "subscription_cycle"
+) {
+const grantMonth = new Date(
+  invoice.created * 1000
+)
+  .toISOString()
+  .slice(0, 7) + "-01"
 
-          const monthlyItemQuantity =
-            subscriptionPlan === "ultimate"
-              ? 2
-              : 1
+const habitRecoveryItemId =
+  "e98e579f-67c7-4e24-9b9b-7c21fca772d7"
 
-          // 習慣リカバリー
-          const {
-            data: habitRecoveryResult,
-            error: habitRecoveryError,
-          } = await supabaseAdmin.rpc(
-            "grant_subscription_monthly_items",
-            {
-              p_user_id:
-                subscriptionData.user_id,
-              p_subscription_id:
-                subscriptionData.id,
-              p_grant_month:
-                grantMonth,
-              p_item_id:
-                habitRecoveryItemId,
-              p_quantity:
-                monthlyItemQuantity,
-            }
-          )
+const expBoostItemId =
+  "5d0ef037-481e-4eeb-be6d-836aa9a7e07f"
 
-          if (habitRecoveryError) {
-            console.error(
-              "習慣リカバリー月次付与エラー:",
-              habitRecoveryError
-            )
+const monthlyItemQuantity =
+  subscriptionPlan === "ultimate"
+    ? 2
+    : 1
 
-            return NextResponse.json(
-              {
-                error:
-                  "習慣リカバリーの月次付与に失敗しました",
-              },
-              { status: 500 }
-            )
-          }
+// 習慣リカバリー
+const {
+  data: habitRecoveryResult,
+  error: habitRecoveryError,
+} = await supabaseAdmin.rpc(
+  "grant_subscription_monthly_items",
+  {
+    p_user_id:
+      subscriptionData.user_id,
+    p_subscription_id:
+      subscriptionData.id,
+    p_grant_month:
+      grantMonth,
+    p_item_id:
+      habitRecoveryItemId,
+    p_quantity:
+      monthlyItemQuantity,
+  }
+)
 
-          console.log(
-            "習慣リカバリー月次付与:",
-            habitRecoveryResult
-          )
+if (habitRecoveryError) {
+  console.error(
+    "習慣リカバリー月次付与エラー:",
+    habitRecoveryError
+  )
 
-          // EXPブースト
-          const {
-            data: expBoostResult,
-            error: expBoostError,
-          } = await supabaseAdmin.rpc(
-            "grant_subscription_monthly_items",
-            {
-              p_user_id:
-                subscriptionData.user_id,
-              p_subscription_id:
-                subscriptionData.id,
-              p_grant_month:
-                grantMonth,
-              p_item_id:
-                expBoostItemId,
-              p_quantity:
-                monthlyItemQuantity,
-            }
-          )
+  return NextResponse.json(
+    {
+      error:
+        "習慣リカバリーの月次付与に失敗しました",
+    },
+    { status: 500 }
+  )
+}
 
-          if (expBoostError) {
-            console.error(
-              "EXPブースト月次付与エラー:",
-              expBoostError
-            )
+console.log(
+  "習慣リカバリー月次付与:",
+  habitRecoveryResult
+)
 
-            return NextResponse.json(
-              {
-                error:
-                  "EXPブーストの月次付与に失敗しました",
-              },
-              { status: 500 }
-            )
-          }
+// EXPブースト
+const {
+  data: expBoostResult,
+  error: expBoostError,
+} = await supabaseAdmin.rpc(
+  "grant_subscription_monthly_items",
+  {
+    p_user_id:
+      subscriptionData.user_id,
+    p_subscription_id:
+      subscriptionData.id,
+    p_grant_month:
+      grantMonth,
+    p_item_id:
+      expBoostItemId,
+    p_quantity:
+      monthlyItemQuantity,
+  }
+)
 
-          console.log(
-            "EXPブースト月次付与:",
-            expBoostResult
-          )
+if (expBoostError) {
+  console.error(
+    "EXPブースト月次付与エラー:",
+    expBoostError
+  )
+
+  return NextResponse.json(
+    {
+      error:
+        "EXPブーストの月次付与に失敗しました",
+    },
+    { status: 500 }
+  )
+}
+
+console.log(
+  "EXPブースト月次付与:",
+  expBoostResult
+)
+} else {
+console.log(
+  "月次アイテム付与対象外のInvoice:",
+  {
+    invoiceId: invoice.id,
+    billingReason,
+  }
+)
+}
         }
       }
     }

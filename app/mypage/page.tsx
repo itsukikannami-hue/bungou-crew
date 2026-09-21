@@ -54,7 +54,17 @@ export default function MyPage() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
-  const [isPremium, setIsPremium] = useState(false)
+  const [isCancelLoading, setIsCancelLoading] =
+  useState(false)
+  const [isReactivateLoading, setIsReactivateLoading] =
+  useState(false)
+  const [userPlan, setUserPlan] = useState<
+  "free" | "premium" | "ultimate"
+>("free")
+
+const [isChangePlanLoading, setIsChangePlanLoading] =
+  useState(false)
+
 const [premiumSubscription, setPremiumSubscription] = useState<{
   current_period_end: string | null
   cancel_at_period_end: boolean
@@ -78,47 +88,63 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
 
  const fetchPremiumStatus = async (userId: string) => {
   try {
-    console.log("PREMIUM STATUS CHECK:", userId)
+    console.log("PLAN STATUS CHECK:", userId)
 
-    const { data: premiumData, error: premiumError } =
-      await supabase.rpc("is_premium_user", {
-        target_user_id: userId,
-      })
+    const {
+      data: planData,
+      error: planError,
+    } = await supabase.rpc("get_user_plan", {
+      target_user_id: userId,
+    })
 
-      console.log("本番PREMIUM RPC:", {
-        userId,
-        premiumData,
-        premiumError,
-      })
+    console.log("PLAN RPC:", {
+      userId,
+      planData,
+      planError,
+    })
 
-    if (premiumError) {
+    if (planError) {
       console.error(
-        "プレミアム判定取得エラー:",
-        premiumError
+        "プラン判定取得エラー:",
+        planError
       )
       return
     }
 
-    setIsPremium(Boolean(premiumData))
+    const plan =
+      planData === "premium" ||
+      planData === "ultimate"
+        ? planData
+        : "free"
+
+    setUserPlan(plan)
 
     console.log(
-      "isPremium SET:",
-      Boolean(premiumData)
+      "userPlan SET:",
+      plan
     )
 
-    const { data: subscriptionData, error: subscriptionError } =
-      await supabase
-        .from("subscriptions")
-        .select(
-          "current_period_end, cancel_at_period_end"
-        )
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .order("current_period_end", {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle()
+    // 無料プランなら契約情報は取得しない
+    if (plan === "free") {
+      setPremiumSubscription(null)
+      return
+    }
+
+    const {
+      data: subscriptionData,
+      error: subscriptionError,
+    } = await supabase
+      .from("subscriptions")
+      .select(
+        "current_period_end, cancel_at_period_end"
+      )
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing"])
+      .order("current_period_end", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle()
 
     console.log("SUBSCRIPTION RESULT:", {
       subscriptionData,
@@ -127,7 +153,7 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
 
     if (subscriptionError) {
       console.error(
-        "プレミアム契約情報取得エラー:",
+        "契約情報取得エラー:",
         subscriptionError
       )
       return
@@ -136,9 +162,186 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
     setPremiumSubscription(subscriptionData)
   } catch (error) {
     console.error(
-      "プレミアム情報取得エラー:",
+      "プラン情報取得エラー:",
       error
     )
+  }
+}
+
+const handleCancelSubscription = async () => {
+  const confirmed = window.confirm(
+    "現在の契約期間終了時に解約します。\n\n契約終了日までは現在のプランを利用できます。\n\n解約を予約しますか？"
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    setIsCancelLoading(true)
+
+    const response = await fetch(
+      "/api/stripe/cancel",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ??
+          "解約予約に失敗しました"
+      )
+    }
+
+    alert(
+      "解約を予約しました。\n契約終了日までは現在のプランを利用できます。"
+    )
+
+    await fetchPremiumStatus(user?.id ?? "")
+  } catch (error) {
+    console.error(
+      "解約予約エラー:",
+      error
+    )
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "解約予約に失敗しました"
+    )
+  } finally {
+    setIsCancelLoading(false)
+  }
+}
+
+const handleReactivateSubscription = async () => {
+  const confirmed = window.confirm(
+    "解約予約を取り消します。\n\n現在のプランを契約終了日以降も継続します。\n\n解約予約を取り消しますか？"
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    setIsReactivateLoading(true)
+
+    const response = await fetch(
+      "/api/stripe/cancel/reactivate",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ??
+          "解約予約の取り消しに失敗しました"
+      )
+    }
+
+    alert(
+      "解約予約を取り消しました。\n現在のプランを継続できます。"
+    )
+
+    if (user?.id) {
+      await fetchPremiumStatus(user.id)
+    }
+  } catch (error) {
+    console.error(
+      "解約予約取り消しエラー:",
+      error
+    )
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "解約予約の取り消しに失敗しました"
+    )
+  } finally {
+    setIsReactivateLoading(false)
+  }
+}
+
+const handleChangePlan = async (
+  targetPlan: "premium" | "ultimate"
+) => {
+  const targetPlanName =
+    targetPlan === "ultimate"
+      ? "Ultimate"
+      : "Premium"
+
+  const currentPlanName =
+    userPlan === "ultimate"
+      ? "Ultimate"
+      : "Premium"
+
+  const confirmed = window.confirm(
+    `${currentPlanName}から${targetPlanName}へ変更します。\n\n` +
+      `契約途中の場合は、Stripeによって日割りの差額が計算されます。\n\n` +
+      `${targetPlanName}プランへ変更しますか？`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    setIsChangePlanLoading(true)
+
+    const response = await fetch(
+      "/api/stripe/change-plan",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          plan: targetPlan,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ??
+          "プラン変更に失敗しました"
+      )
+    }
+
+    alert(
+      `${targetPlanName}プランへ変更しました。`
+    )
+
+    if (user?.id) {
+      await fetchPremiumStatus(user.id)
+    }
+  } catch (error) {
+    console.error(
+      "プラン変更エラー:",
+      error
+    )
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "プラン変更に失敗しました"
+    )
+  } finally {
+    setIsChangePlanLoading(false)
   }
 }
 
@@ -631,105 +834,259 @@ const BADGE_DATA: Record<string,{
 <div className="px-4 pb-4">
   <div className="bg-white rounded-xl shadow-sm border p-5">
 
-    {isPremium ? (
-      <>
-        <div className="text-lg font-bold">
-          ✨ 有料プラン会員
-        </div>
+  {userPlan === "ultimate" ? (
+  <>
+    <div className="text-lg font-bold">
+      👑 Ultimate プラン会員
+    </div>
 
-        <div className="text-sm text-green-600 font-bold mt-2">
-          現在、有料プランを契約中です
-        </div>
+    <div className="mt-2 text-sm text-gray-600">
+      月額980円
+    </div>
 
-        {premiumSubscription?.current_period_end && (
-          <div className="text-sm text-gray-500 mt-3">
-            次回更新日：
-            {new Date(
-              premiumSubscription.current_period_end
-            ).toLocaleDateString("ja-JP")}
-          </div>
-        )}
+    <div className="mt-4 rounded-lg bg-purple-50 border border-purple-200 p-4">
+      <div className="font-bold text-purple-700 mb-2">
+        Ultimate 特典
+      </div>
 
-        {premiumSubscription?.cancel_at_period_end && (
-          <div className="text-sm text-orange-600 font-bold mt-3">
-            契約終了予定です
-          </div>
-        )}
+      <ul className="space-y-2 text-sm text-gray-700">
+        <li>✓ 登録時に5,000ポイント付与</li>
+        <li>✓ 毎月「習慣リカバリー」×2</li>
+        <li>✓ 毎月「EXPブースト」×2</li>
+        <li>✓ おすすめタイムラインで優先表示</li>
+        <li>✓ 詳細な執筆統計</li>
+        <li>✓ Ultimate専用プレミアムバッジ</li>
+        <li>✓ 広告15日掲載：0ポイント</li>
+        <li>✓ 広告30日掲載：0ポイント</li>
+      </ul>
+    </div>
 
-        <div className="mt-4 w-full bg-gray-100 text-gray-600 rounded-lg py-3 text-center font-bold">
-          契約中
-        </div>
-      </>
-    ) : (
-      <>
-        <div className="text-lg font-bold">
-          ✨ ブンゴウクルー 有料プラン
-        </div>
-
-        <div className="text-sm text-gray-500 mt-2">
-          より便利にブンゴウクルーを楽しめる有料プランです。
-        </div>
-
-        {/* 500円プラン */}
-        <div className="mt-5 border rounded-xl p-4">
-          <div className="font-bold text-lg">
-            プレミアムプラン
-          </div>
-
-          <div className="text-2xl font-bold mt-2">
-            月額500円
-          </div>
-
-          <div className="text-sm text-gray-600 mt-3 space-y-1">
-            <div>🎁 加入時 2,000pt</div>
-            <div>🎁 習慣リカバリー ×1</div>
-            <div>🎁 EXPブースト ×1</div>
-            <div>📊 より詳細な執筆統計</div>
-            <div>📢 おすすめタイムラインで少し優先表示</div>
-          </div>
-
-          <button
-            onClick={() => startCheckout("premium")}
-            disabled={isCheckoutLoading}
-            className="mt-4 w-full bg-black text-white rounded-lg py-3 font-bold disabled:opacity-50"
-          >
-            {isCheckoutLoading
-              ? "Stripeへ移動中..."
-              : "プレミアムに登録する"}
-          </button>
-        </div>
-
-        {/* 980円プラン */}
-        <div className="mt-4 border-2 rounded-xl p-4">
-          <div className="font-bold text-lg">
-            アルティメットプラン
-          </div>
-
-          <div className="text-2xl font-bold mt-2">
-            月額980円
-          </div>
-
-          <div className="text-sm text-gray-600 mt-3 space-y-1">
-            <div>🎁 加入時 5,000pt</div>
-            <div>🎁 習慣リカバリー ×2</div>
-            <div>🎁 EXPブースト ×2</div>
-            <div>📊 高度な執筆統計</div>
-            <div>📈 週間・月間の成長分析</div>
-            <div>📢 おすすめタイムラインでより優先表示</div>
-          </div>
-
-          <button
-            onClick={() => startCheckout("ultimate")}
-            disabled={isCheckoutLoading}
-            className="mt-4 w-full bg-black text-white rounded-lg py-3 font-bold disabled:opacity-50"
-          >
-            {isCheckoutLoading
-              ? "Stripeへ移動中..."
-              : "アルティメットに登録する"}
-          </button>
-        </div>
-      </>
+    {premiumSubscription?.current_period_end && (
+      <div className="mt-4 text-sm text-gray-600">
+        次回更新日：
+        {new Date(
+          premiumSubscription.current_period_end
+        ).toLocaleDateString("ja-JP")}
+      </div>
     )}
+
+{premiumSubscription?.cancel_at_period_end && (
+  <>
+    <div className="mt-2 text-sm text-red-600">
+      契約終了予定です
+    </div>
+
+    {premiumSubscription.current_period_end && (
+      <div className="mt-1 text-sm text-gray-600">
+        契約終了日：
+        {new Date(
+          premiumSubscription.current_period_end
+        ).toLocaleDateString("ja-JP")}
+      </div>
+    )}
+
+    <button
+      type="button"
+      onClick={handleReactivateSubscription}
+      disabled={isReactivateLoading}
+      className="mt-4 rounded-lg border border-green-300 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50"
+    >
+      {isReactivateLoading
+        ? "処理中..."
+        : "解約予約を取り消す"}
+    </button>
+  </>
+)}
+
+{!premiumSubscription?.cancel_at_period_end && (
+  <>
+    <div className="mt-2 text-sm text-green-600">
+      契約中
+    </div>
+
+    <button
+      type="button"
+      onClick={handleCancelSubscription}
+      disabled={isCancelLoading}
+      className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+    >
+      {isCancelLoading
+        ? "処理中..."
+        : "解約を予約する"}
+    </button>
+    <button
+  onClick={() => handleChangePlan("ultimate")}
+  disabled={isChangePlanLoading}
+  className="mt-3 w-full rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {isChangePlanLoading
+    ? "変更中..."
+    : "Ultimateへプラン変更"}
+</button>
+  </>
+)}
+
+  </>
+) : userPlan === "premium" ? (
+  <>
+    <div className="text-lg font-bold">
+      ✨ Premium プラン会員
+    </div>
+
+    <div className="mt-2 text-sm text-gray-600">
+      月額500円
+    </div>
+
+    <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 p-4">
+      <div className="font-bold text-blue-700 mb-2">
+        Premium 特典
+      </div>
+
+      <ul className="space-y-2 text-sm text-gray-700">
+        <li>✓ 登録時に2,000ポイント付与</li>
+        <li>✓ 毎月「習慣リカバリー」×1</li>
+        <li>✓ 毎月「EXPブースト」×1</li>
+        <li>✓ おすすめタイムラインで少し優先表示</li>
+        <li>✓ 詳細な執筆統計</li>
+        <li>✓ Premium専用プレミアムバッジ</li>
+        <li>✓ 広告15日掲載：0ポイント</li>
+        <li>✓ 広告30日掲載：1,500ポイント</li>
+      </ul>
+    </div>
+
+    {premiumSubscription?.current_period_end && (
+      <div className="mt-4 text-sm text-gray-600">
+        次回更新日：
+        {new Date(
+          premiumSubscription.current_period_end
+        ).toLocaleDateString("ja-JP")}
+      </div>
+    )}
+
+{premiumSubscription?.cancel_at_period_end && (
+  <>
+    <div className="mt-2 text-sm text-red-600">
+      契約終了予定です
+    </div>
+
+    {premiumSubscription.current_period_end && (
+      <div className="mt-1 text-sm text-gray-600">
+        契約終了日：
+        {new Date(
+          premiumSubscription.current_period_end
+        ).toLocaleDateString("ja-JP")}
+      </div>
+    )}
+
+    <button
+      type="button"
+      onClick={handleReactivateSubscription}
+      disabled={isReactivateLoading}
+      className="mt-4 rounded-lg border border-green-300 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50"
+    >
+      {isReactivateLoading
+        ? "処理中..."
+        : "解約予約を取り消す"}
+    </button>
+  </>
+)}
+
+{!premiumSubscription?.cancel_at_period_end && (
+  <>
+    <div className="mt-2 text-sm text-green-600">
+      契約中
+    </div>
+
+    <button
+      type="button"
+      onClick={handleCancelSubscription}
+      disabled={isCancelLoading}
+      className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+    >
+      {isCancelLoading
+        ? "処理中..."
+        : "解約を予約する"}
+    </button>
+    <button
+  onClick={() => handleChangePlan("premium")}
+  disabled={isChangePlanLoading}
+  className="mt-3 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {isChangePlanLoading
+    ? "変更中..."
+    : "Premiumへプラン変更"}
+</button>
+  </>
+
+)}
+  </>
+) : (
+  <>
+    <div className="text-lg font-bold">
+      ✨ ブンゴウクルー 有料プラン
+    </div>
+
+    <div className="mt-2 text-sm text-gray-600">
+      有料プランに加入すると、ポイントやアイテムなどの特典を受け取れます。
+    </div>
+
+    <div className="mt-4 grid gap-3">
+      <div className="rounded-lg border p-4">
+        <div className="font-bold">
+          ✨ Premium
+        </div>
+
+        <div className="mt-1 text-sm text-gray-600">
+          月額500円
+        </div>
+
+        <ul className="mt-3 space-y-1 text-sm text-gray-600">
+          <li>・登録時2,000ポイント</li>
+          <li>・毎月アイテム2個</li>
+          <li>・おすすめタイムライン優遇</li>
+          <li>・詳細な執筆統計</li>
+        </ul>
+
+        <button
+          onClick={() => startCheckout("premium")}
+          disabled={isCheckoutLoading}
+          className="mt-4 w-full rounded-lg bg-black px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+        >
+          Premiumに加入する
+        </button>
+      </div>
+
+      <div className="rounded-lg border p-4">
+        <div className="font-bold">
+          👑 Ultimate
+        </div>
+
+        <div className="mt-1 text-sm text-gray-600">
+          月額980円
+        </div>
+
+        <ul className="mt-3 space-y-1 text-sm text-gray-600">
+          <li>・登録時5,000ポイント</li>
+          <li>・毎月アイテム4個</li>
+          <li>・おすすめタイムラインをより優遇</li>
+          <li>・高度な執筆統計</li>
+        </ul>
+
+        <button
+          onClick={() => startCheckout("ultimate")}
+          disabled={isCheckoutLoading}
+          className="mt-4 w-full rounded-lg bg-black px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+        >
+          Ultimateに加入する
+        </button>
+      </div>
+    </div>
+
+    <div className="mt-4 text-xs text-gray-500">
+      ※広告掲載の7日プランは有料プランでも利用できません。
+    </div>
+  </>
+)}
 
   </div>
 </div>
