@@ -461,22 +461,16 @@ if (!premiumData) {
             ポイントを使って、あなたの作品を広告として掲載できます。
           </p>
 
-          {isPremium ? (
-  !showAdForm && (
-    <button
-      type="button"
-      onClick={() =>
-        setShowAdForm(true)
-      }
-      className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
-    >
-      広告を出稿する
-    </button>
-  )
-) : (
-  <p className="mt-5 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-    広告出稿はプレミアム会員限定です。
-  </p>
+          {!showAdForm && (
+  <button
+    type="button"
+    onClick={() =>
+      setShowAdForm(true)
+    }
+    className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
+  >
+    広告を出稿する
+  </button>
 )}
 
         </div>

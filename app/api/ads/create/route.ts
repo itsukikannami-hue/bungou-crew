@@ -69,10 +69,11 @@ export async function POST(request: Request) {
     }
 
     // 不正なプランを防止
-    const plan =
-      userPlan === "premium" ||
-      userPlan === "ultimate"
-        ? userPlan
+    const plan: "free" | "premium" | "ultimate" =
+    userPlan === "premium"
+      ? "premium"
+      : userPlan === "ultimate"
+        ? "ultimate"
         : "free"
 
     // リクエスト取得
