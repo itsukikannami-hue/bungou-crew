@@ -119,6 +119,18 @@ export default function AdminPage() {
     サブスク・ポイント購入などの決済履歴を確認
   </div>
 </Link>
+<Link
+  href="/admin/points"
+  className="block bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition"
+>
+  <div className="text-lg font-bold">
+    ポイント管理
+  </div>
+
+  <div className="text-sm text-gray-500 mt-1">
+    ポイント残高・履歴・付与・減算を管理
+  </div>
+</Link>
 
         </div>
       </div>
