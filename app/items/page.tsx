@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 
 type Item = {
@@ -376,15 +377,26 @@ const [pointsLoading, setPointsLoading] = useState(true)
           </p>
 
           {!showAdForm && (
-  <button
-    type="button"
-    onClick={() =>
-      setShowAdForm(true)
-    }
-    className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
-  >
-    広告を出稿する
-  </button>
+  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+
+    <button
+      type="button"
+      onClick={() =>
+        setShowAdForm(true)
+      }
+      className="rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
+    >
+      広告を出稿する
+    </button>
+
+    <Link
+      href="/ads/stats"
+      className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-center text-sm font-bold text-gray-700 hover:bg-gray-50"
+    >
+      📊 広告統計を見る
+    </Link>
+
+  </div>
 )}
 
         </div>
