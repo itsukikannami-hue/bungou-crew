@@ -9,23 +9,17 @@ type PlanBadgeProps = {
   userId: string
 }
 
-const planCache = new Map<string, Plan>()
-
 export default function PlanBadge({
   userId,
 }: PlanBadgeProps) {
-  const [plan, setPlan] = useState<Plan | null>(
-    planCache.get(userId) ?? null
-  )
+  const [plan, setPlan] = useState<Plan | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     const fetchPlan = async () => {
-      const cachedPlan = planCache.get(userId)
-
-      if (cachedPlan) {
-        setPlan(cachedPlan)
+      if (!userId) {
+        setPlan("free")
         return
       }
 
@@ -41,6 +35,11 @@ export default function PlanBadge({
           "プラン情報取得エラー:",
           error
         )
+
+        if (!cancelled) {
+          setPlan("free")
+        }
+
         return
       }
 
@@ -50,8 +49,6 @@ export default function PlanBadge({
           : data === "premium"
           ? "premium"
           : "free"
-
-      planCache.set(userId, resolvedPlan)
 
       if (!cancelled) {
         setPlan(resolvedPlan)

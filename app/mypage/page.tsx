@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import PostCard from "@/components/PostCard"
+import PlanBadge from "@/components/PlanBadge"
 import type { User } from "@supabase/supabase-js"
 
 type Profile = {
@@ -771,15 +772,21 @@ const BADGE_DATA: Record<string,{
   className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
 />
 
-          <div>
-          <div className="font-bold text-lg leading-tight">
-              {profile?.username || "名無し作家"}
-            </div>
+<div>
+  <div className="flex items-center gap-1.5 font-bold text-lg leading-tight">
+    <span>
+      {profile?.username || "名無し作家"}
+    </span>
 
-            <div className="text-gray-500 text-sm mt-1 leading-snug">
-              {profile?.bio || "まだ自己紹介がありません"}
-            </div>
-          </div>
+    {profile?.user_id && (
+      <PlanBadge userId={profile.user_id} />
+    )}
+  </div>
+
+  <div className="text-gray-500 text-sm mt-1 leading-snug">
+    {profile?.bio || "まだ自己紹介がありません"}
+  </div>
+</div>
 
         </div>
 

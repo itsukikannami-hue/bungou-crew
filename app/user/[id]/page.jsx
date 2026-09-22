@@ -4,6 +4,7 @@ import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { createNotification } from "@/lib/notification"
+import PlanBadge from "@/components/PlanBadge"
 
 export default function UserPage() {
   const params = useParams()
@@ -196,9 +197,15 @@ undefined,
         className="w-20 h-20 rounded-full object-cover"
       />
 
-      <div className="font-bold text-xl mt-2">
-        {profile?.username}
-      </div>
+<div className="flex items-center gap-1.5 font-bold text-xl mt-2">
+  <span>
+    {profile?.username || "名無し作家"}
+  </span>
+
+  {profile?.user_id && (
+    <PlanBadge userId={profile.user_id} />
+  )}
+</div>
 
       <div className="text-gray-500 mb-6">
         {profile?.bio}
