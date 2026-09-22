@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabaseClient"
 import Link from "next/link"
 import { createNotification } from "@/lib/notification"
 import Image from "next/image"
+import PlanBadge from "@/components/PlanBadge"
 
 import type { User } from "@supabase/supabase-js"
 
@@ -37,6 +38,7 @@ type Post = {
 
   repost?: {
     id: string
+    user_id: string
     content: string | null
 
     profiles?: {
@@ -370,12 +372,16 @@ const fetchMyCheers = async()=>{
 />
 </Link>
 
-<Link
-href={profileUrl}
-className="font-bold hover:underline ml-3"
->
-{post.profiles?.username ?? "名無し"}
-</Link>
+<div className="ml-3 flex items-center gap-1.5">
+  <Link
+    href={profileUrl}
+    className="font-bold hover:underline"
+  >
+    {post.profiles?.username ?? "名無し"}
+  </Link>
+
+  <PlanBadge userId={post.user_id} />
+</div>
 
 
 
@@ -478,8 +484,12 @@ mt-3
 bg-gray-50
 ">
 
-<div className="font-bold">
-{post.repost.profiles?.username}
+<div className="flex items-center gap-1.5">
+  <span className="font-bold">
+    {post.repost.profiles?.username ?? "名無し"}
+  </span>
+
+  <PlanBadge userId={post.repost.user_id} />
 </div>
 
 
