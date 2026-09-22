@@ -384,10 +384,24 @@ if (!isPointPurchase) {
       const priceId =
         subscriptionItem?.price.id ?? null
 
-      const plan =
+        const plan =
         priceId === process.env.STRIPE_ULTIMATE_PRICE_ID
           ? "ultimate"
-          : "premium"
+          : priceId === process.env.STRIPE_PREMIUM_PRICE_ID
+          ? "premium"
+          : null
+      
+      if (!plan) {
+        console.error(
+          "未知のStripe Price IDです:",
+          priceId
+        )
+      
+        return NextResponse.json(
+          { error: "未知のStripe Price IDです" },
+          { status: 400 }
+        )
+      }
 
       const productName =
         plan === "ultimate"
@@ -725,10 +739,25 @@ if (!isPointPurchase) {
 
         if (subscriptionData?.user_id) {
           const subscriptionPlan =
-  subscriptionData.price_id ===
-  process.env.STRIPE_ULTIMATE_PRICE_ID
-    ? "ultimate"
-    : "premium"
+          subscriptionData.price_id ===
+          process.env.STRIPE_ULTIMATE_PRICE_ID
+            ? "ultimate"
+            : subscriptionData.price_id ===
+              process.env.STRIPE_PREMIUM_PRICE_ID
+            ? "premium"
+            : null
+        
+        if (!subscriptionPlan) {
+          console.error(
+            "未知のStripe Price IDです:",
+            subscriptionData.price_id
+          )
+        
+          return NextResponse.json(
+            { error: "未知のStripe Price IDです" },
+            { status: 400 }
+          )
+        }
 
 const subscriptionProductName =
   subscriptionPlan === "ultimate"
@@ -952,14 +981,21 @@ console.log(
 
       if (customerId) {
         const { data: subscriptionData } =
-          await supabase
-            .from("subscriptions")
-            .select("id, user_id, price_id")
-            .eq(
-              "stripe_customer_id",
-              customerId
-            )
-            .maybeSingle()
+        await supabase
+          .from("subscriptions")
+          .select(
+            "id, user_id, price_id"
+          )
+          .eq(
+            "stripe_customer_id",
+            customerId
+          )
+          .in("status", ["active", "trialing"])
+          .order("updated_at", {
+            ascending: false,
+          })
+          .limit(1)
+          .maybeSingle()
 
         if (subscriptionData?.user_id) {
           const subscriptionPlan =
