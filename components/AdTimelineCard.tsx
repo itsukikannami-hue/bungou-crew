@@ -1,41 +1,36 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 
 type Ad = {
   id: string
   user_id: string
-  genre: string
   message: string
   link_url: string
-  profiles: {
-    username: string | null
-  }[]
+  username: string
 }
 
 export default function AdTimelineCard() {
-    const router = useRouter()
   const [ad, setAd] = useState<Ad | null>(null)
 
   useEffect(() => {
     const fetchAd = async () => {
+      const now = new Date().toISOString()
+
       const { data, error } = await supabase
         .from("ads")
         .select(`
           id,
           user_id,
-          genre,
           message,
-          link_url,
-          profiles (
-            username
-          )
+          link_url
         `)
         .eq("status", "active")
-        .lte("start_at", new Date().toISOString())
-        .gte("end_at", new Date().toISOString())
+        .lte("start_at", now)
+        .gte("end_at", now)
+        .not("message", "is", null)
+        .neq("message", "")
 
       if (error) {
         console.error("Timeline広告取得エラー:", error)
@@ -53,7 +48,28 @@ export default function AdTimelineCard() {
 
       const selectedAd = data[randomIndex]
 
-      setAd(selectedAd)
+      // 広告主のユーザー情報を取得
+      const { data: profileData, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", selectedAd.user_id)
+          .maybeSingle()
+
+      if (profileError) {
+        console.error(
+          "Timeline広告主ユーザー情報取得エラー:",
+          profileError
+        )
+      }
+
+      setAd({
+        id: selectedAd.id,
+        user_id: selectedAd.user_id,
+        message: selectedAd.message,
+        link_url: selectedAd.link_url,
+        username: profileData?.username ?? "広告主",
+      })
 
       // 表示回数を1増やす
       const { error: impressionError } =
@@ -77,22 +93,26 @@ export default function AdTimelineCard() {
 
   const handleAdClick = async () => {
     if (!ad) return
-  
+
     const { error } = await supabase.rpc(
       "increment_ad_click",
       {
         p_ad_id: ad.id,
       }
     )
-  
+
     if (error) {
       console.error(
-        "広告クリック数更新エラー:",
+        "Timeline広告クリック数更新エラー:",
         error
       )
     }
-  
-    router.push(`/user/${ad.user_id}`)
+
+    window.open(
+      ad.link_url,
+      "_blank",
+      "noopener,noreferrer"
+    )
   }
 
   if (!ad) {
@@ -100,60 +120,82 @@ export default function AdTimelineCard() {
   }
 
   return (
-<button
-  type="button"
-  onClick={handleAdClick}
-  className="
-    block
-    w-full
-    text-left
-    rounded-2xl
-    border
-    border-gray-200
-    bg-white
-    p-5
-    shadow-sm
-    transition
-    hover:shadow-md
-  "
->
-      <div className="text-xs font-bold text-gray-400">
-        📢 広告
+    <div
+      className="
+        block
+        w-full
+        rounded-2xl
+        border
+        border-gray-200
+        bg-white
+        p-5
+        shadow-sm
+        transition
+        hover:shadow-md
+      "
+    >
+      {/* 広告ラベル */}
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-bold text-gray-400">
+          📢 スポンサー広告
+        </div>
+
+        <span className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-400">
+          AD
+        </span>
       </div>
 
-      <div className="mt-2 text-sm font-bold text-gray-500">
-        本日のピックアップユーザー
+      {/* 広告主 */}
+      <div className="mt-4 flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm">
+          ✍️
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-400">
+            広告を出稿したユーザー
+          </p>
+
+          <p className="text-sm font-bold text-gray-900">
+            {ad.username}
+          </p>
+        </div>
       </div>
 
+      {/* メッセージ */}
       <div className="mt-4">
-        <p className="text-xs text-gray-500">
-          ユーザー名
-        </p>
-
-        <p className="text-base font-bold text-gray-900">
-          {ad.profiles?.[0]?.username ?? "ユーザー"}
-        </p>
-      </div>
-
-      <div className="mt-3">
-        <p className="text-xs text-gray-500">
-          執筆しているジャンル
-        </p>
-
-        <p className="text-sm font-medium text-gray-900">
-          {ad.genre}
-        </p>
-      </div>
-
-      <div className="mt-3">
-        <p className="text-xs text-gray-500">
-          メッセージ
-        </p>
-
-        <p className="whitespace-pre-wrap text-sm text-gray-700">
+        <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
           {ad.message}
         </p>
       </div>
+
+      {/* 作品を見る */}
+      <button
+        type="button"
+        onClick={handleAdClick}
+        className="
+          mt-4
+          w-full
+          rounded-xl
+          border
+          border-gray-200
+          bg-gray-50
+          px-4
+          py-3
+          text-center
+          text-sm
+          font-bold
+          text-gray-700
+          transition
+          hover:bg-gray-100
+        "
+      >
+        📖 作品を見てみる ↗
       </button>
+
+      <div className="mt-3 text-center text-[10px] text-gray-400">
+        ブンゴウクルー広告
+      </div>
+    </div>
   )
 }
