@@ -107,6 +107,18 @@ export default function AdminPage() {
     Premium・Ultimateの契約状況を確認
   </div>
 </Link>
+<Link
+  href="/admin/payments"
+  className="block bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition"
+>
+  <div className="text-lg font-bold">
+    決済管理
+  </div>
+
+  <div className="text-sm text-gray-500 mt-1">
+    サブスク・ポイント購入などの決済履歴を確認
+  </div>
+</Link>
 
         </div>
       </div>
