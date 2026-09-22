@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
+import Link from "next/link"
 
 export default function AdminPage() {
   const router = useRouter()
@@ -94,6 +95,18 @@ export default function AdminPage() {
               サービス全体を管理します。
             </p>
           </div>
+          <Link
+  href="/admin/subscriptions"
+  className="block bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition"
+>
+  <div className="text-lg font-bold">
+    契約プラン管理
+  </div>
+
+  <div className="text-sm text-gray-500 mt-1">
+    Premium・Ultimateの契約状況を確認
+  </div>
+</Link>
 
         </div>
       </div>
