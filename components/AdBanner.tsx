@@ -8,9 +8,7 @@ type Ad = {
   user_id: string
   message: string
   link_url: string
-  profiles: {
-    username: string | null
-  }[] | null
+  username: string
 }
 
 export default function AdBanner() {
@@ -26,14 +24,13 @@ export default function AdBanner() {
           id,
           user_id,
           message,
-          link_url,
-          profiles (
-            username
-          )
+          link_url
         `)
         .eq("status", "active")
         .lte("start_at", now)
         .gte("end_at", now)
+        .not("message", "is", null)
+        .neq("message", "")
 
       if (error) {
         console.error("広告取得エラー:", error)
@@ -51,7 +48,31 @@ export default function AdBanner() {
 
       const selectedAd = data[randomIndex]
 
-      setAd(selectedAd)
+      // 広告主のユーザー情報を取得
+      const { data: profileData, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", selectedAd.user_id)
+          .maybeSingle()
+
+      if (profileError) {
+        console.error(
+          "広告主ユーザー情報取得エラー:",
+          profileError
+        )
+      }
+
+      const username =
+        profileData?.username ?? "広告主"
+
+      setAd({
+        id: selectedAd.id,
+        user_id: selectedAd.user_id,
+        message: selectedAd.message,
+        link_url: selectedAd.link_url,
+        username,
+      })
 
       // 表示回数を1増やす
       const { error: impressionError } = await supabase.rpc(
@@ -98,9 +119,6 @@ export default function AdBanner() {
     )
   }
 
-  const username =
-    ad.profiles?.[0]?.username ?? "広告主"
-
   return (
     <div className="my-6 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50 shadow-lg">
       {/* 広告ヘッダー */}
@@ -134,7 +152,7 @@ export default function AdBanner() {
             </p>
 
             <p className="font-bold text-gray-800">
-              {username}
+              {ad.username}
             </p>
           </div>
         </div>
