@@ -972,9 +972,12 @@ export default function DataPage() {
 
   if (loading) {
     return (
-      <div className="p-10">
-        読み込み中...
-      </div>
+      <main className="min-h-screen bg-[#fffaf2] px-4 py-12 text-[#765b47] sm:px-6">
+        <div className="mx-auto max-w-3xl rounded-[28px] border border-[#f0e1d2] bg-white p-8 text-center shadow-sm">
+          <div className="mb-3 text-3xl">📖</div>
+          <p className="font-bold">執筆の記録を読み込んでいます...</p>
+        </div>
+      </main>
     )
   }
 
@@ -983,21 +986,22 @@ export default function DataPage() {
   // =========================
 
   return (
-    <div className="space-y-6 p-6">
+    <main className="min-h-screen bg-[#fffaf2] px-4 pb-24 pt-6 text-[#765b47] sm:px-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
 
       {/* ヘッダー */}
 
-      <div className="rounded-2xl bg-white p-6 shadow">
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="relative overflow-hidden rounded-[28px] border border-[#f0dfca] bg-gradient-to-br from-[#fff0d9] via-[#fff8ef] to-white p-6 shadow-sm sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-5 -top-9 text-8xl opacity-20">📚</div>
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
           <div>
 
-            <div className="mb-2 text-2xl font-black">
-              📚 データページ
-            </div>
+            <p className="mb-2 text-xs font-bold tracking-[0.2em] text-[#bb865c]">WRITING RECORD</p>
+            <h1 className="text-2xl font-black text-[#674a36] sm:text-3xl">📚 執筆データ</h1>
+            <p className="mt-2 text-sm text-[#907b68]">積み重ねてきた執筆の記録を振り返りましょう。</p>
 
-            <div className="text-gray-600">
+            <div className="mt-3 text-sm font-bold text-[#987b62]">
               {userName}
             </div>
 
@@ -1006,10 +1010,10 @@ export default function DataPage() {
           <div
             className={`w-fit rounded-full px-4 py-2 text-xs font-black ${
               plan === "ultimate"
-                ? "bg-purple-100 text-purple-700"
+                ? "border border-[#d9c3e8] bg-[#f5edfb] text-[#805b97]"
                 : plan === "premium"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-gray-100 text-gray-600"
+                ? "border border-[#eecb9f] bg-[#fff1de] text-[#b47540]"
+                : "border border-[#e9ddcd] bg-white text-[#947b65]"
             }`}
           >
             {planLabel} PLAN
@@ -1017,11 +1021,11 @@ export default function DataPage() {
 
         </div>
 
-      </div>
+      </header>
 
       {/* 基本統計 */}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
         <Card
           icon={<PenSquare />}
@@ -1046,13 +1050,13 @@ export default function DataPage() {
       {/* Premium以上 */}
 
       {plan !== "free" && (
-        <div className="rounded-2xl bg-white p-6 shadow">
+        <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
 
           <div className="flex items-center gap-2">
 
             <PenSquare />
 
-            <div className="text-lg font-bold">
+            <div className="text-lg font-bold text-[#674a36]">
               平均執筆速度
             </div>
 
@@ -1065,7 +1069,7 @@ export default function DataPage() {
             </span>
           </div>
 
-          <div className="mt-2 text-sm text-gray-500">
+          <div className="mt-2 text-sm text-[#987f69]">
             これまでの執筆ログから算出しています。
           </div>
 
@@ -1078,11 +1082,10 @@ export default function DataPage() {
         className={`
           relative
           overflow-hidden
-          rounded-2xl
+          rounded-[28px]
           p-6
-          text-white
-          shadow
-          ${writerAnalysis?.gradient || "bg-slate-700"}
+          shadow-sm
+          border border-[#ecd8c0] bg-gradient-to-br from-[#fff0db] via-[#fff8ef] to-white text-[#674a36]
         `}
       >
 
@@ -1110,7 +1113,7 @@ export default function DataPage() {
               justify-center
               rounded-full
               text-2xl
-              ${writerAnalysis?.iconBg || "bg-white/20"}
+              bg-white/80
             `}
           >
             {writerAnalysis?.emoji}
@@ -1122,7 +1125,7 @@ export default function DataPage() {
               WRITER TYPE
             </div>
 
-            <div className="text-lg font-bold">
+            <div className="text-lg font-bold text-[#674a36]">
               作家タイプ分析
             </div>
 
@@ -1134,13 +1137,13 @@ export default function DataPage() {
           {writerAnalysis?.title}
         </div>
 
-        <div className="mb-5 leading-relaxed opacity-90">
+        <div className="mb-5 leading-relaxed text-[#80654f]">
           {writerAnalysis?.description}
         </div>
 
-        <div className="mb-4 rounded-xl bg-white p-4 text-black">
+        <div className="mb-4 rounded-2xl border border-[#f0e1d2] bg-white p-4 text-[#765b47]">
 
-          <div className="mb-2 text-sm font-bold text-gray-500">
+          <div className="mb-2 text-sm font-bold text-[#ad805b]">
             💡 執筆アドバイス
           </div>
 
@@ -1188,7 +1191,7 @@ export default function DataPage() {
                 key={tag}
                 className="
                   rounded-full
-                  bg-white/20
+                  bg-white/80 border border-[#efd9c3] text-[#926d4e]
                   px-3
                   py-1
                   text-sm
@@ -1213,15 +1216,15 @@ export default function DataPage() {
         <>
           {/* 日別文字数 */}
 
-          <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
 
             <div className="mb-4 flex items-center justify-between">
 
-              <div className="text-lg font-bold">
+              <div className="text-lg font-bold text-[#674a36]">
                 📈 日別文字数
               </div>
 
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+              <span className="rounded-full border border-[#e9d4bd] bg-[#fff3e4] px-3 py-1 text-xs font-bold text-[#b37c4e]">
                 PREMIUM
               </span>
 
@@ -1241,7 +1244,7 @@ export default function DataPage() {
                 >
 
                   <CartesianGrid
-                    strokeDasharray="3 3"
+                    strokeDasharray="3 3" stroke="#f0e2d4"
                   />
 
                   <XAxis
@@ -1255,7 +1258,7 @@ export default function DataPage() {
                   <Line
                     type="monotone"
                     dataKey="words"
-                    stroke="#3b82f6"
+                    stroke="#d78f57"
                     strokeWidth={3}
                   />
 
@@ -1269,15 +1272,15 @@ export default function DataPage() {
 
           {/* 曜日別 */}
 
-          <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
 
             <div className="mb-4 flex items-center justify-between">
 
-              <div className="text-lg font-bold">
+              <div className="text-lg font-bold text-[#674a36]">
                 📊 曜日ごとの執筆量
               </div>
 
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+              <span className="rounded-full border border-[#e9d4bd] bg-[#fff3e4] px-3 py-1 text-xs font-bold text-[#b37c4e]">
                 PREMIUM
               </span>
 
@@ -1297,7 +1300,7 @@ export default function DataPage() {
                 >
 
                   <CartesianGrid
-                    strokeDasharray="3 3"
+                    strokeDasharray="3 3" stroke="#f0e2d4"
                   />
 
                   <XAxis
@@ -1310,7 +1313,7 @@ export default function DataPage() {
 
                   <Bar
                     dataKey="words"
-                    fill="#10b981"
+                    fill="#e8a56d"
                   />
 
                 </BarChart>
@@ -1323,15 +1326,15 @@ export default function DataPage() {
 
           {/* 時間帯 */}
 
-          <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
 
             <div className="mb-4 flex items-center justify-between">
 
-              <div className="text-lg font-bold">
+              <div className="text-lg font-bold text-[#674a36]">
                 🌙 執筆時間帯分析
               </div>
 
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+              <span className="rounded-full border border-[#e9d4bd] bg-[#fff3e4] px-3 py-1 text-xs font-bold text-[#b37c4e]">
                 PREMIUM
               </span>
 
@@ -1356,9 +1359,9 @@ export default function DataPage() {
                     label
                   >
 
-                    <Cell fill="#60a5fa" />
-                    <Cell fill="#34d399" />
-                    <Cell fill="#f472b6" />
+                    <Cell fill="#e8a56d" />
+                    <Cell fill="#c9b7a3" />
+                    <Cell fill="#f0c9a5" />
 
                   </Pie>
 
@@ -1385,23 +1388,23 @@ export default function DataPage() {
 
       {plan === "ultimate" ? (
         <>
-          <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
 
             <div className="mb-5 flex items-center justify-between">
 
               <div>
 
-                <div className="text-lg font-bold">
+                <div className="text-lg font-bold text-[#674a36]">
                   👑 月間執筆分析
                 </div>
 
-                <div className="mt-1 text-sm text-gray-500">
+                <div className="mt-1 text-sm text-[#987f69]">
                   月ごとの執筆量と成長を確認できます。
                 </div>
 
               </div>
 
-              <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+              <span className="rounded-full border border-[#e7cbb1] bg-[#fff1e2] px-3 py-1 text-xs font-bold text-[#a26b41]">
                 ULTIMATE
               </span>
 
@@ -1409,13 +1412,13 @@ export default function DataPage() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
-              <div className="rounded-xl bg-purple-50 p-5">
+              <div className="rounded-2xl border border-[#f2e2cf] bg-[#fff8ee] p-5">
 
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-[#987f69]">
                   今月の文字数
                 </div>
 
-                <div className="mt-2 text-3xl font-black">
+                <div className="mt-2 text-3xl font-black text-[#674a36]">
                   {(
                     monthlyChartData[
                       monthlyChartData.length - 1
@@ -1428,13 +1431,13 @@ export default function DataPage() {
 
               </div>
 
-              <div className="rounded-xl bg-purple-50 p-5">
+              <div className="rounded-2xl border border-[#f2e2cf] bg-[#fff8ee] p-5">
 
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-[#987f69]">
                   前月比
                 </div>
 
-                <div className="mt-2 text-3xl font-black">
+                <div className="mt-2 text-3xl font-black text-[#674a36]">
                   {monthlyGrowth >= 0
                     ? "+"
                     : ""}
@@ -1464,7 +1467,7 @@ export default function DataPage() {
                 >
 
                   <CartesianGrid
-                    strokeDasharray="3 3"
+                    strokeDasharray="3 3" stroke="#f0e2d4"
                   />
 
                   <XAxis
@@ -1478,7 +1481,7 @@ export default function DataPage() {
                   <Line
                     type="monotone"
                     dataKey="words"
-                    stroke="#8b5cf6"
+                    stroke="#c58b70"
                     strokeWidth={3}
                   />
 
@@ -1490,7 +1493,7 @@ export default function DataPage() {
 
           </div>
 
-          <div className="rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 to-white p-6 shadow-sm">
+          <div className="rounded-[24px] border border-[#ead9c7] bg-gradient-to-r from-[#fff1e1] to-white p-6 shadow-sm">
 
             <div className="flex items-start gap-4">
 
@@ -1500,11 +1503,11 @@ export default function DataPage() {
 
               <div>
 
-                <div className="text-lg font-bold text-purple-800">
+                <div className="text-lg font-bold text-[#875c40]">
                   Ultimate執筆分析
                 </div>
 
-                <p className="mt-2 text-sm leading-6 text-gray-600">
+                <p className="mt-2 text-sm leading-6 text-[#8c7461]">
                   月間の執筆量を比較しながら、現在の執筆ペースを確認できます。
                   執筆を続けるほど、月間データが蓄積されていきます。
                 </p>
@@ -1524,13 +1527,13 @@ export default function DataPage() {
 
       {/* ランキング */}
 
-      <div className="rounded-2xl bg-white p-6 shadow">
+      <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
 
         <div className="mb-4 flex items-center gap-2">
 
           <Trophy />
 
-          <div className="text-lg font-bold">
+          <div className="text-lg font-bold text-[#674a36]">
             週間文字数ランキング
           </div>
 
@@ -1580,7 +1583,7 @@ export default function DataPage() {
 
                 </div>
 
-                <div className="font-bold text-blue-500">
+                <div className="font-bold text-[#bd804f]">
                   {item.value}
                 </div>
 
@@ -1592,8 +1595,8 @@ export default function DataPage() {
         </div>
 
       </div>
-
-    </div>
+      </div>
+    </main>
   )
 }
 
@@ -1607,19 +1610,19 @@ function Card({
   value,
 }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow">
+    <div className="rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm">
 
       <div className="mb-3 flex items-center gap-2">
 
         {icon}
 
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-[#987f69]">
           {title}
         </div>
 
       </div>
 
-      <div className="text-2xl font-black">
+      <div className="text-2xl font-black text-[#674a36]">
         {value}
       </div>
 
@@ -1636,11 +1639,11 @@ function LockedStatsCard({
   description,
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-[24px] border border-[#eadccc] bg-white p-6 shadow-sm">
 
       <div className="flex items-start gap-4">
 
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xl">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff2e3] text-xl">
           🔒
         </div>
 
@@ -1648,17 +1651,17 @@ function LockedStatsCard({
 
           <div className="flex flex-wrap items-center gap-2">
 
-            <h2 className="text-lg font-bold text-gray-900">
+            <h2 className="text-lg font-bold text-[#674a36]">
               {title}
             </h2>
 
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-500">
+            <span className="rounded-full bg-[#fff2e3] px-2.5 py-1 text-xs font-bold text-[#ad794c]">
               PLAN限定
             </span>
 
           </div>
 
-          <p className="mt-2 text-sm leading-6 text-gray-500">
+          <p className="mt-2 text-sm leading-6 text-[#917b68]">
             {description}
           </p>
 

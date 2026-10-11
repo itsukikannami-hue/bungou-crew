@@ -1,8 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import PostCard from "@/components/PostCard"
+import { hydrateReposts } from "@/lib/hydrateReposts"
+import FloatingPostComposer from "@/components/FloatingPostComposer"
 import type { User } from "@supabase/supabase-js"
 import AdTimelineCard from "@/components/AdTimelineCard"
 
@@ -21,6 +23,7 @@ type Post = {
     id: string
   }[]
 
+  repost_id?: string | null
   repost?: Post | null
 }
 
@@ -34,6 +37,8 @@ export default function TimelinePage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [user, setUser] = useState<User | null>(null)
   const [tag, setTag] = useState<string | null>(null)
+  const [timelineError, setTimelineError] = useState("")
+  const requestIdRef = useRef(0)
 
   useEffect(() => {
     const params = new URLSearchParams(
@@ -149,6 +154,66 @@ export default function TimelinePage() {
   }
 
   const fetchPosts = async () => {
+    const requestId = ++requestIdRef.current
+    const isCurrent = () => requestId === requestIdRef.current
+    setTimelineError("")
+
+    // ブロックは双方、ミュートは自分からの設定を対象にする。
+    // 相手が自分をブロックした情報はRLSで直接取得できないため、専用RPCを使用。
+    const { data: authData, error: authError } = await supabase.auth.getUser()
+    if (!isCurrent()) return
+    if (authError) {
+      setPosts([])
+      setTimelineError("ログイン情報を確認できませんでした。再読み込みしてください。")
+      return
+    }
+
+    let hiddenIds = new Set<string>()
+    if (authData.user) {
+      const { data: hiddenData, error: hiddenError } = await supabase.rpc(
+        "get_timeline_hidden_user_ids"
+      )
+      if (!isCurrent()) return
+      if (hiddenError || !Array.isArray(hiddenData)) {
+        console.error("非表示ユーザーの取得エラー:", hiddenError)
+        setPosts([])
+        setTimelineError("ブロック・ミュート設定を読み込めませんでした。再読み込みしてください。")
+        return
+      }
+      hiddenIds = new Set(hiddenData as string[])
+    }
+
+    const publish = async (rawPosts: Post[], recommended = false) => {
+      // 元の投稿者も検査する。hydrateReposts 後にも確認することで、
+      // 拡散・コメ付き拡散経由の表示を防ぐ。
+      const candidates = rawPosts.filter(p => !hiddenIds.has(p.user_id))
+      const repostIds = [...new Set(candidates.map(p => p.repost_id).filter((id): id is string => !!id))]
+      let blockedOriginalIds = new Set<string>()
+      if (repostIds.length) {
+        const { data: originals, error: originalsError } = await supabase
+          .from("posts").select("id,user_id").in("id", repostIds)
+        if (!isCurrent()) return
+        if (originalsError) {
+          console.error("拡散元の取得エラー:", originalsError)
+          setPosts([])
+          setTimelineError("拡散元を確認できませんでした。再読み込みしてください。")
+          return
+        }
+        blockedOriginalIds = new Set((originals ?? [])
+          .filter(original => hiddenIds.has(original.user_id))
+          .map(original => original.id))
+      }
+      const safeCandidates = candidates.filter(p => !p.repost_id || !blockedOriginalIds.has(p.repost_id))
+      const hydrated = await hydrateReposts(safeCandidates)
+      if (!isCurrent()) return
+      const visible = hydrated.filter(p =>
+        !hiddenIds.has(p.user_id) &&
+        !(p.repost && hiddenIds.has(p.repost.user_id))
+      )
+      const result = recommended ? await sortRecommendedPosts(visible) : visible
+      if (isCurrent()) setPosts(result)
+    }
+
     /*
      * ハッシュタグ検索
      * → 通常の新着順
@@ -191,12 +256,11 @@ export default function TimelinePage() {
 
       if (error) {
         console.error(error)
+        if (isCurrent()) { setPosts([]); setTimelineError("投稿を取得できませんでした。") }
         return
       }
 
-      setPosts(
-        (data ?? []) as Post[]
-      )
+      await publish((data ?? []) as Post[])
 
       return
     }
@@ -247,6 +311,7 @@ export default function TimelinePage() {
           error
         )
 
+        if (isCurrent()) { setPosts([]); setTimelineError("投稿を取得できませんでした。") }
         return
       }
 
@@ -260,12 +325,7 @@ export default function TimelinePage() {
         data?.length
       )
 
-      const sortedPosts =
-        await sortRecommendedPosts(
-          (data ?? []) as Post[]
-        )
-
-      setPosts(sortedPosts)
+      await publish((data ?? []) as Post[], true)
 
       return
     }
@@ -275,14 +335,10 @@ export default function TimelinePage() {
      * → 従来どおり新着順
      */
     if (mode === "following") {
-      const {
-        data: auth,
-      } = await supabase.auth.getUser()
-
-      const currentUser =
-        auth.user
+      const currentUser = authData.user
 
       if (!currentUser) {
+        if (isCurrent()) setPosts([])
         return
       }
 
@@ -304,7 +360,7 @@ export default function TimelinePage() {
           "フォロー取得エラー:",
           followsError
         )
-
+        if (isCurrent()) { setPosts([]); setTimelineError("フォロー情報を取得できませんでした。") }
         return
       }
 
@@ -355,13 +411,11 @@ export default function TimelinePage() {
           "フォロー中タイムライン取得エラー:",
           error
         )
-
+        if (isCurrent()) { setPosts([]); setTimelineError("投稿を取得できませんでした。") }
         return
       }
 
-      setPosts(
-        (data ?? []) as Post[]
-      )
+      await publish((data ?? []) as Post[])
     }
   }
 
@@ -379,16 +433,7 @@ export default function TimelinePage() {
     const {
       error,
     } = await supabase
-      .from("posts")
-      .delete()
-      .eq(
-        "id",
-        id
-      )
-      .eq(
-        "user_id",
-        user.id
-      )
+      .rpc("soft_delete_post", { target_post_id: id })
 
     if (error) {
       console.error(error)
@@ -400,57 +445,81 @@ export default function TimelinePage() {
   }
 
   return (
-    <div className="p-5">
-      <div className="mb-5 flex border-b">
-        <button
-          onClick={() =>
-            setMode("recommend")
-          }
-          className={`flex-1 p-3 ${
-            mode === "recommend"
-              ? "border-b-2 font-bold"
-              : ""
-          }`}
-        >
-          おすすめ
-        </button>
+    <main className="min-h-screen bg-[#fff9f0] px-4 pb-8 pt-6 text-[#775b45] sm:px-6">
+      <FloatingPostComposer onPosted={fetchPosts} />
+      <div className="mx-auto w-full max-w-2xl">
+        <header className="mb-5 px-1">
+          <h1 className="text-2xl font-bold tracking-wide">タイムライン</h1>
+          <p className="mt-1 text-sm text-[#927b69]">
+            みんなの創作活動をのぞいてみよう
+          </p>
+        </header>
 
-        <button
-          onClick={() =>
-            setMode("following")
-          }
-          className={`flex-1 p-3 ${
-            mode === "following"
-              ? "border-b-2 font-bold"
-              : ""
-          }`}
-        >
-          フォロー中
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        {posts.map(
-          (post, index) => (
-            <div key={post.id}>
-              <PostCard
-                post={post}
-                user={user}
-                deletePost={
-                  deletePost
-                }
-              />
-
-              {(index + 1) % 6 ===
-                0 && (
-                <div className="mt-3">
-                  <AdTimelineCard />
-                </div>
-              )}
+        <section className="overflow-hidden rounded-2xl border border-[#f2deca] bg-white shadow-[0_4px_18px_rgba(139,101,72,0.06)]">
+          {tag ? (
+            <div className="border-b border-[#f2deca] px-5 py-4">
+              <p className="text-sm text-[#927b69]">ハッシュタグの投稿</p>
+              <h2 className="mt-1 text-lg font-bold text-[#c77f43]">#{tag}</h2>
             </div>
-          )
-        )}
+          ) : (
+            <div className="grid grid-cols-2 border-b border-[#f2deca]" role="tablist" aria-label="タイムラインの表示切り替え">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "recommend"}
+                onClick={() => setMode("recommend")}
+                className={`relative py-4 text-sm transition-colors sm:text-base ${
+                  mode === "recommend"
+                    ? "font-bold text-[#c77f43] after:absolute after:bottom-0 after:left-1/4 after:h-[3px] after:w-1/2 after:rounded-full after:bg-[#eaa56c]"
+                    : "text-[#927b69] hover:bg-[#fff9f0]"
+                }`}
+              >
+                おすすめ
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "following"}
+                onClick={() => setMode("following")}
+                className={`relative py-4 text-sm transition-colors sm:text-base ${
+                  mode === "following"
+                    ? "font-bold text-[#c77f43] after:absolute after:bottom-0 after:left-1/4 after:h-[3px] after:w-1/2 after:rounded-full after:bg-[#eaa56c]"
+                    : "text-[#927b69] hover:bg-[#fff9f0]"
+                }`}
+              >
+                フォロー中
+              </button>
+            </div>
+          )}
+
+          <div role="tabpanel">
+            {timelineError && (
+              <p role="alert" className="px-5 py-4 text-sm text-red-600">{timelineError}</p>
+            )}
+            {!timelineError && (posts.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <p className="text-lg font-semibold">まだ投稿がありません</p>
+                <p className="mt-2 text-sm text-[#927b69]">
+                  投稿が届いたら、ここに表示されます。
+                </p>
+              </div>
+            ) : (
+              posts.map((post, index) => (
+                <div key={post.id}>
+                  <div className="border-b border-dashed border-[#ead9c8] px-3 py-4 sm:px-5">
+                    <PostCard post={post} user={user} deletePost={deletePost} />
+                  </div>
+                  {(index + 1) % 6 === 0 && (
+                    <div className="border-b border-dashed border-[#ead9c8] bg-[#fffdf9] px-3 py-4 sm:px-5">
+                      <AdTimelineCard />
+                    </div>
+                  )}
+                </div>
+              ))
+            ))}
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }

@@ -91,9 +91,9 @@ export default function InProgressQuestsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-[#fffaf2] px-4 py-7 pb-28 sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <p className="text-gray-500">
+          <p className="text-[#927d6b]">
             依頼中のクエストを読み込んでいます...
           </p>
         </div>
@@ -103,16 +103,16 @@ export default function InProgressQuestsPage() {
 
   if (!userId) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-[#fffaf2] px-4 py-7 pb-28 sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
+          <div className="rounded-3xl border border-[#f0e3d4] bg-white p-8 text-center">
             <p className="font-bold text-gray-700">
               ログインが必要です。
             </p>
 
             <Link
               href="/quests"
-              className="mt-5 inline-block rounded-xl bg-black px-5 py-3 font-bold text-white"
+              className="mt-5 inline-block rounded-2xl bg-[#dc985e] px-5 py-3 font-bold text-white"
             >
               クエスト一覧へ戻る
             </Link>
@@ -123,29 +123,45 @@ export default function InProgressQuestsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-[#fffaf2] px-4 py-7 pb-28 sm:px-6">
       <div className="mx-auto max-w-4xl">
 
         <div className="mb-8">
           <Link
             href="/quests"
-            className="text-sm font-medium text-gray-500 hover:text-gray-900"
+            className="text-sm font-medium text-[#927d6b] hover:text-[#bb7843]"
           >
             ← クエスト一覧に戻る
           </Link>
 
-          <h1 className="mt-5 text-3xl font-bold text-gray-900">
+          <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-[#654b37] sm:text-3xl">
             依頼中のクエスト
           </h1>
 
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-[#927d6b]">
           あなたが依頼して現在進行中のクエストです。
           </p>
         </div>
 
+        
+        {/* クエスト画面の共通ナビゲーション */}
+        <nav aria-label="クエストの表示切り替え" className="mb-7 mt-6 flex gap-2 overflow-x-auto border-b border-[#eedfcd] pb-3">
+          {[
+            { href: "/quests", label: "募集中", key: "open" },
+            { href: "/quests/in-progress", label: "依頼中", key: "in-progress" },
+            { href: "/quests/working", label: "参加中", key: "working" },
+            { href: "/quests/completed", label: "完了", key: "completed" },
+          ].map((tab) => (
+            <Link key={tab.key} href={tab.href} aria-current={tab.key === "in-progress" ? "page" : undefined}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${tab.key === "in-progress" ? "bg-[#e8a56d] text-white shadow-sm" : "bg-white text-[#826b57] hover:bg-[#fff0df]"}`}>
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
+
         {quests.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500">
+          <div className="rounded-3xl border border-[#f0e3d4] bg-white p-8 text-center shadow-[0_4px_18px_rgba(133,94,56,0.06)]">
+            <p className="text-[#927d6b]">
               現在、依頼中のクエストはありません。
             </p>
           </div>
@@ -158,56 +174,56 @@ export default function InProgressQuestsPage() {
               return (
                 <div
                   key={quest.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                  className="rounded-3xl border border-[#f0e3d4] bg-white p-6 shadow-[0_4px_18px_rgba(133,94,56,0.06)]"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-bold text-purple-600">
+                    <div className="text-sm font-bold text-[#bf824d]">
                       {quest.quest_type?.name ?? "クエスト"}
                     </div>
 
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                    <span className="rounded-full bg-[#fff0db] px-3 py-1 text-xs font-bold text-[#a86a39]">
                       進行中
                     </span>
                   </div>
 
-                  <h2 className="mt-2 text-xl font-bold text-gray-900">
+                  <h2 className="mt-2 text-xl font-bold text-[#654b37]">
                     {quest.title}
                   </h2>
 
-                  <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm text-gray-600">
+                  <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm text-[#7e6c5c]">
                     {quest.description}
                   </p>
 
                   <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-                    <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">
+                    <div className="rounded-2xl bg-[#fff5e9] p-4">
+                      <p className="text-xs text-[#927d6b]">
                         あなたの立場
                       </p>
 
-                      <p className="mt-1 font-bold text-gray-900">
+                      <p className="mt-1 font-bold text-[#654b37]">
                         {isRequester
                           ? "依頼者"
                           : "受注者"}
                       </p>
                     </div>
 
-                    <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">
+                    <div className="rounded-2xl bg-[#fff5e9] p-4">
+                      <p className="text-xs text-[#927d6b]">
                         1人あたり報酬
                       </p>
 
-                      <p className="mt-1 font-bold text-gray-900">
+                      <p className="mt-1 font-bold text-[#654b37]">
                         {quest.reward_per_person.toLocaleString()} pt
                       </p>
                     </div>
 
-                    <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">
+                    <div className="rounded-2xl bg-[#fff5e9] p-4">
+                      <p className="text-xs text-[#927d6b]">
                         期限
                       </p>
 
-                      <p className="mt-1 text-sm font-bold text-gray-900">
+                      <p className="mt-1 text-sm font-bold text-[#654b37]">
                         {formatDeadline(quest.deadline)}
                       </p>
                     </div>
@@ -217,7 +233,7 @@ export default function InProgressQuestsPage() {
                   <div className="mt-5">
                     <Link
                       href={`/quests/${quest.id}`}
-                      className="block w-full rounded-xl bg-black px-5 py-3 text-center font-bold text-white transition hover:bg-gray-800"
+                      className="block w-full rounded-2xl bg-[#dc985e] px-5 py-3 text-center font-bold text-white transition hover:bg-[#c9844d]"
                     >
                       クエストを開く
                     </Link>

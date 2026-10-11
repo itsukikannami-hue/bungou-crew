@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import UserAvatar from "@/components/UserAvatar";
 
 import { useState, useEffect } from "react";
 import { uploadAvatar } from "@/lib/profile";
@@ -54,8 +56,8 @@ export default function ProfileEditor({
       <h2 className="text-lg font-bold mb-4">プロフィール編集</h2>
 
       <div className="flex items-center gap-4 mb-4">
-        <img
-          src={previewUrl || "/default-avatar.png"}
+        <UserAvatar
+          src={previewUrl || "/default-avatar.svg"}
           alt="avatar"
           className="w-20 h-20 rounded-full"
         />

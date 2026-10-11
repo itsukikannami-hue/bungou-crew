@@ -4,258 +4,252 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import AdBanner from "@/components/AdBanner"
-
-import Header from "@/components/Header"
-import BungouPet from "@/components/BungouPet"
-import Timer from "@/components/Timer"
-import FriendSearch from "@/components/FriendSearch"
-import WeeklyCharts from "@/components/WeeklyCharts"
-import SessionHistory from "@/components/SessionHistory"
 import SessionModal from "@/components/modals/SessionModal"
 import StopModal from "@/components/modals/StopModal"
-import VoiceCall from "@/components/webrtc/VoiceCall"
-import VoiceReceiver from "@/components/webrtc/VoiceReceiver"
-import CallingStatus from "@/components/webrtc/CallingStatus"
-import GroupList from "@/components/GroupList"
-import { createGroup, addMember, listGroups } from "@/lib/group"
-import DMChat from "@/components/DMChat"
 import { updateStatus } from "@/lib/status"
-import GroupChat from "@/components/GroupChat"
-import NotificationList from "@/components/NotificationList"
-import WritingUsers from "@/components/WritingUsers"
-import ProfilePage from "@/components/profile/ProfilePage"
 import Link from "next/link"
 import HomeBungou from "@/components/HomeBungou"
-
+import TutorialModal from "@/components/tutorial/TutorialModal"
 
 export default function Home() {
   const router = useRouter()
 
   const [user, setUser] = useState<any>(null)
-  const [sessions,setSessions] = useState<any[]>([])
+  const [sessions, setSessions] = useState<any[]>([])
   const [weeklyTime, setWeeklyTime] = useState<any[]>([])
   const [weeklyWords, setWeeklyWords] = useState<any[]>([])
-  const [todayTime,setTodayTime] = useState(0)
-  const [showModal,setShowModal] = useState(false)
-  const [showStopModal,setShowStopModal] = useState(false)
-
+  const [todayTime, setTodayTime] = useState(0)
+  const [showModal, setShowModal] = useState(false)
+  const [showStopModal, setShowStopModal] = useState(false)
   const [sessionDuration, setSessionDuration] = useState(0)
-  // 通話関連
-  const [friendIdToCall, setFriendIdToCall] = useState<string | null>(null)
-  const [calling, setCalling] = useState(false)
 
-  // グループ関連
-  const [groups, setGroups] = useState<any[]>([])
-  const [newGroupName, setNewGroupName] = useState("")
-
-  const handleCreateGroup = async () => {
-    if (!user || !newGroupName) return
-    try {
-      const group = await createGroup(user.id, newGroupName)
-      await addMember(group.id, user.id) // 作成者もメンバーに追加
-      const userGroups = await listGroups(user.id)
-      setGroups(userGroups)
-      setNewGroupName("")
-    } catch (error) {
-      console.error("グループ作成エラー:", error)
-    }
-  }
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialChecked, setTutorialChecked] = useState(false)
 
   useEffect(() => {
     if (!user) return
     updateStatus(user.id, "online")
   }, [user])
-  
-  useEffect(() => {
-    const fetchGroups = async () => {
-      if (!user) return
-      try {
-        const userGroups = await listGroups(user.id)
-        setGroups(userGroups)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-    fetchGroups()
-  }, [user])
 
   // ユーザー認証
-  useEffect(()=>{
-    const checkUser = async()=>{
-      const { data:{ user } } = await supabase.auth.getUser()
-      if(!user){
+  useEffect(() => {
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
         router.push("/login")
-      }else{
+      } else {
         setUser(user)
       }
     }
+
     checkUser()
-  },[])
+  }, [router])
+
+  // 初回チュートリアル表示判定
+  useEffect(() => {
+    const checkTutorial = async () => {
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("tutorial_version")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error("チュートリアル状態取得エラー:", error)
+        setTutorialChecked(true)
+        return
+      }
+
+      setShowTutorial((data?.tutorial_version ?? 0) < 1)
+      setTutorialChecked(true)
+    }
+
+    checkTutorial()
+  }, [user])
+
+  const finishTutorial = async () => {
+    if (!user) return
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ tutorial_version: 1 })
+      .eq("user_id", user.id)
+
+    if (error) {
+      console.error("チュートリアル完了状態の保存エラー:", error)
+      window.alert(
+        "チュートリアルの完了状態を保存できませんでした。もう一度お試しください。"
+      )
+      return
+    }
+
+    setShowTutorial(false)
+  }
 
   // 週間データ取得
   useEffect(() => {
     const fetchWeeklyData = async () => {
-      if (!user) return;
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      if (!user) return
+
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
       const { data } = await supabase
         .from("sessions")
         .select("created_at,duration,words")
         .eq("user_id", user.id)
-        .gte("created_at", sevenDaysAgo.toISOString());
+        .gte("created_at", sevenDaysAgo.toISOString())
 
-      if (!data) return;
+      if (!data) return
 
-      const timeMap: Record<string, number> = {};
-      const wordMap: Record<string, number> = {};
+      const timeMap: Record<string, number> = {}
+      const wordMap: Record<string, number> = {}
 
       data.forEach((s: any) => {
         const date = new Date(s.created_at).toLocaleDateString("ja-JP", {
-          timeZone: "Asia/Tokyo"
-        });
+          timeZone: "Asia/Tokyo",
+        })
         timeMap[date] = (timeMap[date] || 0) + s.duration
         wordMap[date] = (wordMap[date] || 0) + s.words
-      });
+      })
 
-      setWeeklyTime(Object.keys(timeMap).map(date => ({ date, minutes: Math.floor(timeMap[date]/60) })))
-      setWeeklyWords(Object.keys(wordMap).map(date => ({ date, words: wordMap[date] })))
-    };
-    fetchWeeklyData();
+      setWeeklyTime(
+        Object.keys(timeMap).map((date) => ({
+          date,
+          minutes: Math.floor(timeMap[date] / 60),
+        }))
+      )
+      setWeeklyWords(
+        Object.keys(wordMap).map((date) => ({
+          date,
+          words: wordMap[date],
+        }))
+      )
+    }
+
+    fetchWeeklyData()
   }, [user])
 
-  // --- 執筆履歴データ取得 ---
-useEffect(() => {
+  // 執筆履歴データ取得
+  useEffect(() => {
     const fetchSessions = async () => {
-      if (!user) return;
-  
+      if (!user) return
+
       try {
         const { data, error } = await supabase
           .from("sessions")
           .select("created_at,duration,words")
           .eq("user_id", user.id)
-          .order("created_at", { ascending: false }); // 最新順
-  
-        if (error) throw error;
-  
-        if (data) setSessions(data);
+          .order("created_at", { ascending: false })
+
+        if (error) throw error
+
+        if (data) setSessions(data)
       } catch (err) {
-        console.error("セッション取得エラー:", err);
+        console.error("セッション取得エラー:", err)
       }
-    };
-  
-    fetchSessions();
-  }, [user]);
+    }
+
+    fetchSessions()
+  }, [user])
 
   return (
     <>
-      <Header/>
+      <main className="min-h-screen bg-[#fff9f0] px-4 pb-8 pt-6 text-[#775b45] sm:px-6">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+          <AdBanner />
 
-      <main className="min-h-screen flex flex-col items-center bg-gray-50 p-6 space-y-6">
+          <section aria-label="ブンゴウと執筆" className="w-full">
+            <HomeBungou />
+          </section>
 
-      <AdBanner />
+          <nav
+            aria-label="育成と執筆のメニュー"
+            className="flex flex-col gap-3"
+          >
+            <Link
+              href="/items"
+              className="flex min-h-20 items-center gap-4 rounded-2xl border border-[#eac39e] bg-[#fff0dd] px-5 py-4 text-[#865632] shadow-sm transition hover:border-[#d78f57] hover:bg-[#ffe8ca] focus-visible:outline-2 focus-visible:outline-[#c77f43]"
+            >
+              <span aria-hidden="true" className="text-3xl">
+                🛍️
+              </span>
+              <span className="flex flex-1 flex-col gap-1">
+                <span className="font-bold">ショップ</span>
+                <span className="text-xs text-[#9d7656]">
+                  アイテム・ポイント
+                </span>
+              </span>
+              <span aria-hidden="true" className="text-[#c77f43]">
+                →
+              </span>
+            </Link>
 
-        {/* ペット */}
-        <HomeBungou />
-<Link href="/album">
-  <button>
-    📚 アルバム
-  </button>
-</Link>
+            <Link
+              href="/album"
+              className="flex min-h-20 items-center gap-4 rounded-2xl border border-[#f2deca] bg-white px-5 py-4 shadow-sm transition hover:border-[#e7ae80] hover:bg-[#fff4e7] focus-visible:outline-2 focus-visible:outline-[#c77f43]"
+            >
+              <span aria-hidden="true" className="text-3xl">
+                📚
+              </span>
+              <span className="flex flex-1 flex-col gap-1">
+                <span className="font-bold">ブンゴウ図鑑</span>
+                <span className="text-xs text-[#9d7656]">
+                  集めた仲間を確認
+                </span>
+              </span>
+              <span aria-hidden="true" className="text-[#c77f43]">
+                →
+              </span>
+            </Link>
 
-<Link href="/data">
-  <button>
-    📊 データ
-  </button>
-</Link>
+            <Link
+              href="/data"
+              className="flex min-h-20 items-center gap-4 rounded-2xl border border-[#f2deca] bg-white px-5 py-4 shadow-sm transition hover:border-[#e7ae80] hover:bg-[#fff4e7] focus-visible:outline-2 focus-visible:outline-[#c77f43]"
+            >
+              <span aria-hidden="true" className="text-3xl">
+                📊
+              </span>
+              <span className="flex flex-1 flex-col gap-1">
+                <span className="font-bold">執筆データ</span>
+                <span className="text-xs text-[#9d7656]">
+                  これまでの執筆記録
+                </span>
+              </span>
+              <span aria-hidden="true" className="text-[#c77f43]">
+                →
+              </span>
+            </Link>
+          </nav>
 
-<Link href="/mypage">
-    <button className="px-4 py-2 bg-purple-500 text-white rounded-lg">
-      👤 マイページ
-    </button>
-  </Link>
+          {showModal && (
+            <SessionModal
+              user={user}
+              duration={sessionDuration}
+              setShowModal={setShowModal}
+            />
+          )}
 
-  <Link href="/quests">
-  <button
-    className="
-      w-full
-      max-w-md
-      bg-yellow-500
-      text-white
-      py-3
-      rounded-xl
-      shadow
-      hover:bg-yellow-600
-    "
-  >
-    🎯 クエスト
-  </button>
-</Link>
-
-  <Link href="/timeline">
-  <button
-    className="
-      w-full
-      max-w-md
-      bg-green-500
-      text-white
-      py-3
-      rounded-xl
-      shadow
-      hover:bg-green-600
-    "
-  >
-    📝 タイムライン
-  </button>
-</Link>
-
-<Link href="/search">
-  <button
-    className="
-      w-full
-      max-w-md
-      bg-purple-500
-      text-white
-      py-3
-      rounded-xl
-      shadow
-      hover:bg-purple-600
-    "
-  >
-    🔍 検索
-  </button>
-</Link>
-
-
-
-        {user && friendIdToCall && (
-  <DMChat
-    userId={user.id}
-    friendId={friendIdToCall}
-  />
-)}
-
-
-{user && <NotificationList userId={user.id} />}
-
-
-        {/* モーダル */}
-        {showModal && (
-  <SessionModal
-    user={user}
-    duration={sessionDuration}
-    setShowModal={setShowModal}
-  />
-)}
-        {showStopModal && <StopModal setShowStopModal={setShowStopModal} setShowModal={setShowModal} />}
-
-        {/* 発信側 */}
-        {friendIdToCall && <VoiceCall friendId={friendIdToCall} userId={user.id} onEnd={() => { setFriendIdToCall(null); setCalling(false) }}/>}
-        {/* 受信側 */}
-        {user && !friendIdToCall && <VoiceReceiver userId={user.id} onAccept={(callerId) => { setFriendIdToCall(callerId); setCalling(true) }}/>}
-        {/* 通話ステータス */}
-        {calling && <CallingStatus />}
+          {showStopModal && (
+            <StopModal
+              setShowStopModal={setShowStopModal}
+              setShowModal={setShowModal}
+            />
+          )}
+        </div>
       </main>
+
+      {tutorialChecked && showTutorial && (
+        <TutorialModal
+          onComplete={finishTutorial}
+          onSkip={finishTutorial}
+        />
+      )}
     </>
   )
 }

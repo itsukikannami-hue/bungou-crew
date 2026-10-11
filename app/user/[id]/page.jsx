@@ -5,6 +5,9 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { createNotification } from "@/lib/notification"
 import PlanBadge from "@/components/PlanBadge"
+import PostCard from "@/components/PostCard"
+import { hydrateReposts } from "@/lib/hydrateReposts"
+import { BookOpen, Award, Users, UserRoundPlus, FileText, PenLine, UserCheck, Ban, VolumeX, Flag, X } from "lucide-react"
 
 export default function UserPage() {
   const params = useParams()
@@ -19,19 +22,50 @@ export default function UserPage() {
   const [posts, setPosts] = useState([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [me, setMe] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [followBusy, setFollowBusy] = useState(false)
+  const [followError, setFollowError] = useState("")
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [relationBusy, setRelationBusy] = useState(false)
+  const [relationError, setRelationError] = useState("")
+  const [relationMessage, setRelationMessage] = useState("")
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState("")
+  const [reportDetails, setReportDetails] = useState("")
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportError, setReportError] = useState("")
+  const [reportMessage, setReportMessage] = useState("")
 
   useEffect(() => {
     if (!userId) return
-    fetchUser()
+    void fetchUser()
   }, [userId])
 
   const fetchUser = async () => {
+    setLoading(true)
     // ログインユーザー取得
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
     setMe(user)
+    setRelationError("")
+    setRelationMessage("")
+    setIsBlocked(false)
+    setIsMuted(false)
+    if (user && user.id !== userId) {
+      const [blocksResult, mutesResult] = await Promise.all([
+        supabase.from("user_blocks").select("id").eq("blocker_id", user.id).eq("blocked_id", userId).maybeSingle(),
+        supabase.from("user_mutes").select("id").eq("muter_id", user.id).eq("muted_id", userId).maybeSingle(),
+      ])
+      if (blocksResult.error || mutesResult.error) {
+        console.error("ブロック・ミュート状態取得エラー", blocksResult.error, mutesResult.error)
+        setRelationError("ブロック・ミュートの状態を確認できませんでした。")
+      }
+      setIsBlocked(!!blocksResult.data)
+      setIsMuted(!!mutesResult.data)
+    }
 
     // プロフィール取得
 // プロフィール取得
@@ -43,9 +77,7 @@ const {
     .select("*")
     .eq("user_id", userId)
   
-    console.log(userId)
-    console.log(profileData)
-    console.log(profileError)
+    if (profileError) console.error("プロフィール取得エラー:", profileError)
   
   setProfile(profileData?.[0] || null)
 
@@ -121,7 +153,44 @@ const {
           ascending: false,
         })
 
-    setPosts(postsData || [])
+    // PostCardと同じ表示に必要なプロフィール・応援・拡散元データを取得する。
+    const rawPosts = postsData || []
+    const repostIds = [...new Set(rawPosts.map(p => p.repost_id).filter(Boolean))]
+    const { data: originals, error: originalsError } = repostIds.length
+      ? await supabase.from("posts").select("*").in("id", repostIds)
+      : { data: [], error: null }
+    if (originalsError) console.error("拡散元の取得エラー:", originalsError)
+    const allPosts = [...rawPosts, ...(originals || [])]
+    const authorIds = [...new Set(allPosts.map(p => p.user_id).filter(Boolean))]
+    const allPostIds = [...new Set(allPosts.map(p => p.id))]
+    const [{ data: authors, error: authorsError }, { data: cheers, error: cheersError }] = await Promise.all([
+      authorIds.length
+        ? supabase.from("profiles").select("user_id,username,avatar_url").in("user_id", authorIds)
+        : Promise.resolve({ data: [], error: null }),
+      allPostIds.length
+        ? supabase.from("post_cheers").select("id,post_id").in("post_id", allPostIds)
+        : Promise.resolve({ data: [], error: null }),
+    ])
+    if (authorsError) console.error("投稿者情報の取得エラー:", authorsError)
+    if (cheersError) console.error("応援情報の取得エラー:", cheersError)
+    const authorMap = new Map((authors || []).map(a => [a.user_id, a]))
+    const cheersMap = new Map()
+    for (const cheer of cheers || []) {
+      const existing = cheersMap.get(cheer.post_id) || []
+      existing.push({ id: cheer.id })
+      cheersMap.set(cheer.post_id, existing)
+    }
+    const originalMap = new Map((originals || []).map(p => [p.id, {
+      ...p,
+      profiles: authorMap.get(p.user_id) || null,
+      post_cheers: cheersMap.get(p.id) || [],
+    }]))
+    setPosts(await hydrateReposts(rawPosts.filter(p => !p.deleted).map(p => ({
+      ...p,
+      profiles: authorMap.get(p.user_id) || profileData?.[0] || null,
+      post_cheers: cheersMap.get(p.id) || [],
+      repost: p.repost_id ? originalMap.get(p.repost_id) || null : null,
+    }))))
 
     // フォロー済み確認
     if (user) {
@@ -134,10 +203,13 @@ const {
 
       setIsFollowing(!!data)
     }
+    setLoading(false)
   }
 
   const handleFollow = async () => {
-    if (!me) return
+    if (!me || followBusy || isBlocked || relationBusy) return
+    setFollowBusy(true)
+    setFollowError("")
 
     const { error } = await supabase
       .from("follows")
@@ -147,7 +219,9 @@ const {
       })
 
     if (error) {
-      console.log(error)
+      console.error(error)
+      setFollowError("フォローできませんでした。時間をおいて再度お試しください。")
+      setFollowBusy(false)
       return
     }
 
@@ -170,10 +244,13 @@ undefined,
 
     setIsFollowing(true)
     setFollowers((prev) => prev + 1)
+    setFollowBusy(false)
   }
 
   const handleUnfollow = async () => {
-    if (!me) return
+    if (!me || followBusy) return
+    setFollowBusy(true)
+    setFollowError("")
 
     const { error } = await supabase
       .from("follows")
@@ -182,98 +259,239 @@ undefined,
       .eq("following_id", userId)
 
     if (error) {
-      console.log(error)
+      console.error(error)
+      setFollowError("フォロー解除に失敗しました。")
+      setFollowBusy(false)
       return
     }
 
     setIsFollowing(false)
-    setFollowers((prev) => prev - 1)
+    setFollowers((prev) => Math.max(0, prev - 1))
+    setFollowBusy(false)
+  }
+
+  const submitUserReport = async (event) => {
+    event.preventDefault()
+    if (!me || me.id === userId || !reportReason || reportBusy) return
+    setReportBusy(true)
+    setReportError("")
+    const { error } = await supabase.rpc("submit_user_report", {
+      p_target_user_id: userId,
+      p_reason: reportReason,
+      p_details: reportDetails.trim() || null,
+    })
+    setReportBusy(false)
+    if (error) {
+      console.error("ユーザー通報エラー:", error)
+      setReportError("通報を送信できませんでした。時間をおいて再度お試しください。")
+      return
+    }
+    setReportOpen(false)
+    setReportReason("")
+    setReportDetails("")
+    setReportMessage("通報を受け付けました。ご協力ありがとうございます。")
+  }
+
+  const toggleRelation = async (kind) => {
+    if (!me || me.id === userId || relationBusy || followBusy) return
+    const blocking = kind === "block"
+    const active = blocking ? isBlocked : isMuted
+    if (blocking && !active && !window.confirm("このユーザーをブロックしますか？")) return
+
+    setRelationBusy(true)
+    setRelationError("")
+    setRelationMessage("")
+    const table = blocking ? "user_blocks" : "user_mutes"
+    const ownerKey = blocking ? "blocker_id" : "muter_id"
+    const targetKey = blocking ? "blocked_id" : "muted_id"
+    try {
+      const query = supabase.from(table)
+      const { error } = active
+        ? await query.delete().eq(ownerKey, me.id).eq(targetKey, userId)
+        : await query.insert({ [ownerKey]: me.id, [targetKey]: userId })
+      if (error) throw error
+
+      if (blocking) {
+        setIsBlocked(!active)
+        if (!active && isFollowing) {
+          const { error: unfollowError } = await supabase.from("follows")
+            .delete().eq("follower_id", me.id).eq("following_id", userId)
+          if (unfollowError) {
+            console.error("フォロー解除エラー", unfollowError)
+            setRelationMessage("ブロックを保存しましたが、フォロー解除に失敗しました。")
+          } else {
+            setIsFollowing(false)
+            setFollowers(prev => Math.max(0, prev - 1))
+          }
+        }
+      } else {
+        setIsMuted(!active)
+      }
+      if (!(blocking && !active && isFollowing)) {
+        setRelationMessage(blocking
+          ? (active ? "ブロックを解除しました。" : "ブロックしました。")
+          : (active ? "ミュートを解除しました。" : "ミュートしました。"))
+      }
+    } catch (error) {
+      console.error("ブロック・ミュート更新エラー", error)
+      setRelationError("設定を変更できませんでした。時間をおいて再度お試しください。")
+    } finally {
+      setRelationBusy(false)
+    }
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <img
-        src={profile?.avatar_url || "/default.png"}
-        className="w-20 h-20 rounded-full object-cover"
-      />
-
-<div className="flex items-center gap-1.5 font-bold text-xl mt-2">
-  <span>
-    {profile?.username || "名無し作家"}
-  </span>
-
-  {profile?.user_id && (
-    <PlanBadge userId={profile.user_id} />
-  )}
-</div>
-
-      <div className="text-gray-500 mb-6">
-        {profile?.bio}
-      </div>
-
-      <div className="space-y-2 mb-6">
-        <div>
-          ✍️ {totalWords.toLocaleString()}文字
+    <main className="min-h-screen bg-[#fffaf2] px-4 py-6 text-[#624c3d] sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-[#b37b50]">
+          <Users size={17} aria-hidden="true" />
+          <span>ユーザープロフィール</span>
         </div>
 
-        <div>
-          🏆 {badgeCount}個
-        </div>
-
-        <div>
-          フォロー {following}
-        </div>
-
-        <div>
-          フォロワー {followers}
-        </div>
-
-        <div>
-          投稿 {postCount}
-        </div>
-      </div>
-
-      {me?.id !== userId && (
-        <button
-          onClick={() => {
-            if (isFollowing) {
-              handleUnfollow()
-            } else {
-              handleFollow()
-            }
-          }}
-          className={`
-            px-4 py-2 rounded mb-6 text-white
-            ${
-              isFollowing
-                ? "bg-gray-500"
-                : "bg-blue-500"
-            }
-          `}
-        >
-          {isFollowing
-            ? "フォロー解除"
-            : "フォローする"}
-        </button>
-      )}
-
-      <div className="space-y-4">
-        {posts.map((post) => (
-          <div
-            key={post.id}
-            className="bg-white p-4 rounded-xl shadow"
-          >
-            <div>{post.content}</div>
-
-            <div className="text-xs text-gray-400 mt-2">
-              {new Date(
-                post.created_at
-              ).toLocaleString()
-              }
-            </div>
+        {loading ? (
+          <div className="rounded-3xl border border-[#f1e5d9] bg-white p-10 text-center text-[#a18a76]">
+            プロフィールを読み込み中です…
           </div>
-        ))}
+        ) : !profile ? (
+          <div className="rounded-3xl border border-[#f1e5d9] bg-white p-10 text-center text-[#a18a76]">
+            プロフィールが見つかりませんでした。
+          </div>
+        ) : (
+          <>
+            <section className="overflow-hidden rounded-3xl border border-[#f1e5d9] bg-white shadow-sm">
+              <div className="h-24 bg-gradient-to-r from-[#f9ddbd] via-[#ffeedb] to-[#f8e9d9] sm:h-32" />
+              <div className="px-5 pb-6 sm:px-8">
+                <div className="-mt-10 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end sm:justify-between">
+                  <img
+                    src={profile.avatar_url?.trim() || "/default-avatar.svg"}
+                    alt={`${profile.username || "名無し作家"}のアイコン`}
+                    className="h-20 w-20 rounded-full border-4 border-white bg-[#fffaf2] object-cover shadow-sm sm:h-24 sm:w-24"
+                  />
+                  {me?.id !== userId && (
+                    <button
+                      type="button"
+                      onClick={isFollowing ? handleUnfollow : handleFollow}
+                      disabled={!me || followBusy || relationBusy || isBlocked}
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${isFollowing ? "border border-[#e8c7a9] bg-[#fff7ed] text-[#a66f46] hover:bg-[#ffeddb]" : "bg-[#d78f57] text-white hover:bg-[#c78049]"}`}
+                    >
+                      {isFollowing ? <UserCheck size={17} /> : <UserRoundPlus size={17} />}
+                      {isBlocked ? "ブロック中" : followBusy ? "処理中…" : isFollowing ? "フォロー解除" : "フォローする"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <h1 className="break-all text-2xl font-bold text-[#624c3d]">{profile.username || "名無し作家"}</h1>
+                  <PlanBadge userId={profile.user_id} />
+                </div>
+                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-[#826d5d]">
+                  {profile.bio || "自己紹介はまだありません。"}
+                </p>
+                {me && me.id !== userId && (
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-[#f1e5d9] pt-4">
+                    <button type="button" onClick={() => toggleRelation("block")}
+                      disabled={relationBusy || followBusy}
+                      aria-pressed={isBlocked}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#e8c7a9] px-4 py-2 text-sm hover:bg-[#fff4e7] disabled:opacity-50">
+                      <Ban size={16} /> {isBlocked ? "ブロック解除" : "ブロック"}
+                    </button>
+                    <button type="button" onClick={() => toggleRelation("mute")}
+                      disabled={relationBusy || followBusy}
+                      aria-pressed={isMuted}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#e8c7a9] px-4 py-2 text-sm hover:bg-[#fff4e7] disabled:opacity-50">
+                      <VolumeX size={16} /> {isMuted ? "ミュート解除" : "ミュート"}
+                    </button>
+                    <button type="button" onClick={() => { setReportError(""); setReportOpen(true) }}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#e8c7a9] px-4 py-2 text-sm hover:bg-[#fff4e7]">
+                      <Flag size={16} /> 通報する
+                    </button>
+                  </div>
+                )}
+
+                {reportMessage && <p role="status" className="mt-3 text-sm text-[#7d684e]">{reportMessage}</p>}
+                {relationMessage && <p role="status" className="mt-3 text-sm text-[#7d684e]">{relationMessage}</p>}
+                {relationError && <p role="alert" className="mt-3 text-sm text-red-600">{relationError}</p>}
+                {followError && <p role="alert" className="mt-3 text-sm text-red-600">{followError}</p>}
+              </div>
+            </section>
+
+            <section aria-label="執筆・交流データ" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[
+                { label: "累計執筆文字数", value: totalWords.toLocaleString(), unit: "文字", Icon: PenLine },
+                { label: "獲得バッジ", value: badgeCount.toLocaleString(), unit: "個", Icon: Award },
+                { label: "投稿", value: postCount.toLocaleString(), unit: "件", Icon: FileText },
+                { label: "フォロー", value: following.toLocaleString(), unit: "人", Icon: UserRoundPlus },
+                { label: "フォロワー", value: followers.toLocaleString(), unit: "人", Icon: Users },
+              ].map(({ label, value, unit, Icon }) => (
+                <div key={label} className="rounded-2xl border border-[#f1e5d9] bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-xs font-medium text-[#a18470]">
+                    <Icon size={17} className="text-[#d78f57]" aria-hidden="true" />
+                    {label}
+                  </div>
+                  <div className="mt-3 text-xl font-bold text-[#624c3d] sm:text-2xl">
+                    {value}<span className="ml-1 text-xs font-medium text-[#a18470]">{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            <section className="rounded-3xl border border-[#f1e5d9] bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-5 flex items-center gap-2 border-b border-[#f1e5d9] pb-4">
+                <BookOpen size={21} className="text-[#d78f57]" aria-hidden="true" />
+                <h2 className="text-lg font-bold">投稿一覧</h2>
+                <span className="ml-auto rounded-full bg-[#fff3e7] px-3 py-1 text-xs font-semibold text-[#a9754d]">{postCount}件</span>
+              </div>
+              {(isBlocked || isMuted) ? (
+                <div className="rounded-2xl bg-[#fffaf4] px-4 py-10 text-center text-sm text-[#a18a76]">
+                  {isBlocked ? "ブロック中のため投稿を非表示にしています。" : "ミュート中のため投稿を非表示にしています。"}
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="rounded-2xl bg-[#fffaf4] px-4 py-10 text-center text-sm text-[#a18a76]">
+                  まだ投稿はありません。
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} user={me} />
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
-    </div>
+      {reportOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#38291d]/55 px-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !reportBusy) setReportOpen(false) }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="user-report-title" className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="user-report-title" className="text-lg font-bold">ユーザーを通報</h2>
+              <button type="button" aria-label="閉じる" disabled={reportBusy} onClick={() => setReportOpen(false)} className="rounded-full p-2 hover:bg-[#fff4e7]"><X size={20} /></button>
+            </div>
+            <p className="mt-2 text-sm text-[#826d5d]">通報内容は相手には通知されません。</p>
+            <form onSubmit={submitUserReport} className="mt-5 space-y-4">
+              <label className="block text-sm font-semibold" htmlFor="user-report-reason">通報理由（必須）</label>
+              <select id="user-report-reason" required value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full rounded-xl border border-[#ead9c8] bg-white p-3 text-sm">
+                <option value="">理由を選択してください</option>
+                <option value="spam">スパム・宣伝</option>
+                <option value="harassment">嫌がらせ・誹謗中傷</option>
+                <option value="hate">差別・ヘイト</option>
+                <option value="sexual">性的な内容</option>
+                <option value="violence">暴力的な内容</option>
+                <option value="copyright">著作権侵害</option>
+                <option value="other">その他</option>
+              </select>
+              <label className="block text-sm font-semibold" htmlFor="user-report-details">詳細（任意・1000文字以内）</label>
+              <textarea id="user-report-details" value={reportDetails} onChange={(e) => setReportDetails(e.target.value.slice(0, 1000))} maxLength={1000} rows={4} placeholder="具体的な状況があれば入力してください" className="w-full resize-y rounded-xl border border-[#ead9c8] p-3 text-sm" />
+              <p className="text-right text-xs text-[#826d5d]">{reportDetails.length} / 1000</p>
+              {reportError && <p role="alert" className="text-sm text-red-600">{reportError}</p>}
+              <div className="flex gap-3">
+                <button type="button" disabled={reportBusy} onClick={() => setReportOpen(false)} className="flex-1 rounded-xl border border-[#ead9c8] py-3 text-sm font-semibold">キャンセル</button>
+                <button type="submit" disabled={reportBusy || !reportReason} className="flex-1 rounded-xl bg-[#d78f57] py-3 text-sm font-bold text-white disabled:opacity-50">{reportBusy ? "送信中…" : "通報を送信"}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </main>
   )
 }

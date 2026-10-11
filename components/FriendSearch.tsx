@@ -81,12 +81,6 @@ const FriendSearch: React.FC<FriendSearchProps> = ({ user, onCall }) => {
               >
                 フレンド申請
               </button>
-              <button
-                onClick={() => onCall(u.id)}
-                className="bg-purple-500 text-white px-2 py-1 rounded text-sm"
-              >
-                通話
-              </button>
             </div>
           </div>
         ))}

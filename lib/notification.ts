@@ -25,8 +25,10 @@ export async function createNotification(
     .insert(notification)
 
   if (error) {
-    console.error("Notification Error:", error)
+    console.error("Notification Error:", { type, userId, actorId, postId, link, code: error.code, message: error.message, details: error.details, hint: error.hint })
+    return { success: false as const, error }
   }
+  return { success: true as const, error: null }
 }
 
 export async function getNotifications(userId: string) {
@@ -37,8 +39,8 @@ export async function getNotifications(userId: string) {
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error(error)
-    return []
+    console.error("通知取得エラー:", { userId, code: error.code, message: error.message, details: error.details, hint: error.hint })
+    throw error
   }
 
   return data ?? []

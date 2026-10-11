@@ -69,6 +69,7 @@ export default function AdminUsersPage() {
         <p className="mt-2 text-sm text-gray-500">
           ブンゴウクルーに登録されているユーザーを管理します。
         </p>
+        <Link href="/admin/reports" className="mt-4 inline-flex rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">通報管理へ →</Link>
       </div>
 
       {error && (

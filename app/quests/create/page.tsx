@@ -62,6 +62,7 @@ export default function QuestCreatePage() {
 
         if (data && data.length > 0) {
           setQuestTypeId(data[0].id)
+          setRewardPerPerson(String(data[0].reward_type === "fixed" ? (data[0].fixed_reward ?? data[0].min_reward) : data[0].min_reward))
         }
       } catch (error) {
         console.error(error)
@@ -227,301 +228,117 @@ export default function QuestCreatePage() {
     }
   }
 
+  const totalPoints = (Number(rewardPerPerson) || 0) * (Number(maxParticipants) || 0)
+  const fieldClass = "mt-2 w-full rounded-2xl border border-[#ead8c6] bg-[#fffdf9] px-4 py-3 text-[#594535] outline-none transition placeholder:text-[#b9a99b] focus:border-[#e5a16a] focus:ring-2 focus:ring-[#f9e5d3]"
+  const cardClass = "rounded-[24px] border border-[#f0dfce] bg-white p-5 shadow-[0_4px_20px_rgba(122,80,42,0.05)] sm:p-7"
+
   if (loading) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p className="text-gray-500">
-          クエスト種類を読み込んでいます...
-        </p>
+      <main className="min-h-screen bg-[#fffaf2] px-4 py-10 text-[#594535]">
+        <p className="mx-auto max-w-3xl text-center text-sm text-[#9d8571]">クエスト種類を読み込んでいます...</p>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-
-      <div className="mb-6">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="text-sm text-gray-500 hover:text-gray-900"
-        >
-          ← 戻る
+    <main className="min-h-screen bg-[#fffaf2] px-4 pb-28 pt-7 text-[#594535] sm:px-6">
+      <div className="mx-auto max-w-3xl">
+        <button type="button" onClick={() => router.back()} className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-[#a57b59] hover:text-[#cf8951]">
+          <span aria-hidden="true">←</span> 戻る
         </button>
-      </div>
 
-      <h1 className="text-3xl font-bold text-gray-900">
-        クエストを作成
-      </h1>
+        <div className="mb-7">
+          <span className="inline-block rounded-full bg-[#ffecda] px-3 py-1 text-xs font-bold text-[#bd7b47]">新しい依頼</span>
+          <h1 className="mt-3 text-2xl font-bold tracking-wide text-[#604735] sm:text-3xl">クエストを作成</h1>
+          <p className="mt-2 text-sm leading-7 text-[#967d69]">作品を通じて、ほかの書き手とつながる依頼を作成しましょう。</p>
+        </div>
 
-      <p className="mt-2 text-gray-500">
-        他のユーザーに依頼するクエストを作成します。
-      </p>
-
-      <form
-        onSubmit={handleSubmit}
-        className="mt-8 space-y-6"
-      >
-
-        {/* クエスト種類 */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            クエスト種類
-          </h2>
-
-          <select
-            value={questTypeId}
-            onChange={handleQuestTypeChange}
-            className="mt-3 w-full rounded-xl border border-gray-300 px-4 py-3"
-          >
-            {questTypes.map((type) => (
-              <option
-                key={type.id}
-                value={type.id}
-              >
-                {type.name}
-              </option>
-            ))}
-          </select>
-
-          {selectedQuestType?.description && (
-            <p className="mt-3 text-sm text-gray-500">
-              {selectedQuestType.description}
-            </p>
-          )}
-
-        </section>
-
-        {/* 基本情報 */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            依頼内容
-          </h2>
-
-          {/* タイトル */}
-          <div className="mt-5">
-
-            <label className="block text-sm font-medium text-gray-700">
-              クエストタイトル
-            </label>
-
-            <input
-              type="text"
-              value={title}
-              onChange={(e) =>
-                setTitle(e.target.value)
-              }
-              maxLength={100}
-              placeholder="例：小説○○の第1話を読んで感想をください"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
-            />
-
-            <p className="mt-1 text-xs text-gray-400">
-              {title.length}/100
-            </p>
-
-          </div>
-
-          {/* 内容 */}
-          <div className="mt-5">
-
-            <label className="block text-sm font-medium text-gray-700">
-              依頼内容
-            </label>
-
-            <textarea
-              value={description}
-              onChange={(e) =>
-                setDescription(e.target.value)
-              }
-              rows={7}
-              maxLength={5000}
-              placeholder="どのようなことをしてほしいか、具体的に書いてください。"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
-            />
-
-            <p className="mt-1 text-xs text-gray-400">
-              {description.length}/5000
-            </p>
-
-          </div>
-
-        </section>
-
-        {/* 報酬・募集 */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            報酬・募集人数
-          </h2>
-
-          {/* 報酬 */}
-          <div className="mt-5">
-
-            <label className="block text-sm font-medium text-gray-700">
-              1人あたりの報酬
-            </label>
-
-            <div className="mt-2 flex items-center gap-3">
-
-              <input
-                type="number"
-                min={
-                  selectedQuestType?.min_reward ?? 1
-                }
-                value={rewardPerPerson}
-                onChange={(e) =>
-                  setRewardPerPerson(e.target.value)
-                }
-                disabled={
-                  selectedQuestType?.reward_type ===
-                  "fixed"
-                }
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"
-              />
-
-              <span className="font-bold text-gray-700">
-                pt
-              </span>
-
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <section className={cardClass}>
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff0e1] text-sm font-bold text-[#cb8853]">01</span>
+              <h2 className="text-lg font-bold">クエストの種類</h2>
             </div>
-
-            {selectedQuestType && (
-              <p className="mt-2 text-sm text-gray-500">
-
-                {selectedQuestType.reward_type ===
-                "fixed"
-                  ? `固定報酬：${selectedQuestType.fixed_reward?.toLocaleString()}pt`
-                  : `最低報酬：${selectedQuestType.min_reward.toLocaleString()}pt`}
-
-              </p>
+            <label htmlFor="quest-type" className="block text-sm font-semibold">依頼の種類</label>
+            <select id="quest-type" value={questTypeId} onChange={handleQuestTypeChange} className={fieldClass}>
+              {questTypes.length === 0 && <option value="">選択できる種類がありません</option>}
+              {questTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+            </select>
+            {selectedQuestType?.description && (
+              <p className="mt-3 rounded-xl bg-[#fff8f0] px-4 py-3 text-sm leading-6 text-[#957b66]">{selectedQuestType.description}</p>
             )}
+          </section>
 
-          </div>
+          <section className={cardClass}>
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff0e1] text-sm font-bold text-[#cb8853]">02</span>
+              <h2 className="text-lg font-bold">依頼内容</h2>
+            </div>
+            <div>
+              <label htmlFor="quest-title" className="block text-sm font-semibold">クエストタイトル <span className="text-[#d88e56]">*</span></label>
+              <input id="quest-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="例：小説○○の第1話を読んで感想をください" className={fieldClass} />
+              <p className="mt-2 text-right text-xs text-[#ad9886]">{title.length}/100</p>
+            </div>
+            <div className="mt-5">
+              <label htmlFor="quest-description" className="block text-sm font-semibold">お願いしたいこと <span className="text-[#d88e56]">*</span></label>
+              <textarea id="quest-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={7} maxLength={5000} placeholder="どのようなことをしてほしいか、具体的に書いてください。" className={fieldClass} />
+              <p className="mt-2 text-right text-xs text-[#ad9886]">{description.length}/5000</p>
+            </div>
+          </section>
 
-          {/* 募集人数 */}
-          <div className="mt-5">
+          <section className={cardClass}>
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff0e1] text-sm font-bold text-[#cb8853]">03</span>
+              <h2 className="text-lg font-bold">報酬と募集人数</h2>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label htmlFor="quest-reward" className="block text-sm font-semibold">1人あたりの報酬 <span className="text-[#d88e56]">*</span></label>
+                <div className="relative">
+                  <input id="quest-reward" type="number" min={selectedQuestType?.min_reward ?? 1} value={rewardPerPerson} onChange={(e) => setRewardPerPerson(e.target.value)} disabled={selectedQuestType?.reward_type === "fixed"} className={fieldClass + " pr-12 disabled:bg-[#f6f0e9]"} />
+                  <span className="pointer-events-none absolute right-4 top-1/2 translate-y-[-25%] text-sm font-bold text-[#b2825e]">pt</span>
+                </div>
+                {selectedQuestType && <p className="mt-2 text-xs leading-5 text-[#9b836f]">{selectedQuestType.reward_type === "fixed" ? `固定報酬：${selectedQuestType.fixed_reward?.toLocaleString()}pt` : `最低報酬：${selectedQuestType.min_reward.toLocaleString()}pt`}</p>}
+              </div>
+              <div>
+                <label htmlFor="quest-participants" className="block text-sm font-semibold">募集人数 <span className="text-[#d88e56]">*</span></label>
+                <input id="quest-participants" type="number" min="1" max="100" value={maxParticipants} onChange={(e) => setMaxParticipants(e.target.value)} className={fieldClass} />
+                <p className="mt-2 text-xs text-[#9b836f]">最大100人まで募集できます。</p>
+              </div>
+            </div>
+          </section>
 
-            <label className="block text-sm font-medium text-gray-700">
-              募集人数
-            </label>
+          <section className={cardClass}>
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff0e1] text-sm font-bold text-[#cb8853]">04</span>
+              <h2 className="text-lg font-bold">応募期限と対象作品</h2>
+            </div>
+            <div>
+              <label htmlFor="quest-deadline" className="block text-sm font-semibold">応募締切 <span className="text-[#d88e56]">*</span></label>
+              <input id="quest-deadline" type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={fieldClass} />
+              <p className="mt-2 text-xs leading-5 text-[#9b836f]">この日時を過ぎると、新しい応募は受け付けません。</p>
+            </div>
+            <div className="mt-5">
+              <label htmlFor="quest-url" className="block text-sm font-semibold">作品ページURL <span className="font-normal text-[#b29c88]">（任意）</span></label>
+              <input id="quest-url" type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} placeholder="https://..." className={fieldClass} />
+              <p className="mt-2 text-xs leading-5 text-[#9b836f]">感想・レビュー・添削などの対象作品があれば入力してください。</p>
+            </div>
+          </section>
 
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={maxParticipants}
-              onChange={(e) =>
-                setMaxParticipants(e.target.value)
-              }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
-            />
+          <section className="rounded-[24px] border border-[#efd5b8] bg-[#fff0df] p-5 sm:p-7">
+            <h2 className="font-bold text-[#765039]">必要ポイントの確認</h2>
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-b border-[#efd6be] pb-4">
+              <span className="text-sm text-[#9d7a5d]">{Number(rewardPerPerson || 0).toLocaleString()}pt × {maxParticipants || 0}人</span>
+              <span className="text-2xl font-extrabold text-[#bd7844]">{totalPoints.toLocaleString()} <span className="text-base">pt</span></span>
+            </div>
+            <p className="mt-3 text-xs leading-6 text-[#9b7a5e]">実際のポイント消費は、クエスト作成時にサーバー側で確認・処理します。</p>
+          </section>
 
-            <p className="mt-2 text-sm text-gray-500">
-              最大100人まで募集できます。
-            </p>
-
-          </div>
-
-        </section>
-
-        {/* 期限 */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            期限
-          </h2>
-
-          <label className="mt-5 block text-sm font-medium text-gray-700">
-            締切日時
-          </label>
-
-          <input
-            type="datetime-local"
-            value={deadline}
-            onChange={(e) =>
-              setDeadline(e.target.value)
-            }
-            className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
-          />
-
-          <p className="mt-2 text-sm text-gray-500">
-            この日時を過ぎると新しい応募を受け付けません。
-          </p>
-
-        </section>
-
-        {/* 対象作品 */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
-          <h2 className="text-lg font-bold text-gray-900">
-            対象作品
-          </h2>
-
-          <label className="mt-5 block text-sm font-medium text-gray-700">
-            作品ページURL
-          </label>
-
-          <input
-            type="url"
-            value={targetUrl}
-            onChange={(e) =>
-              setTargetUrl(e.target.value)
-            }
-            placeholder="https://..."
-            className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
-          />
-
-          <p className="mt-2 text-sm text-gray-500">
-            感想・レビュー・添削などの対象作品のURLを入力してください。
-          </p>
-
-        </section>
-
-        {/* 料金確認 */}
-        <section className="rounded-2xl bg-gray-50 p-6">
-
-          <h2 className="font-bold text-gray-900">
-            必要ポイント
-          </h2>
-
-          <div className="mt-3 flex items-center justify-between">
-
-            <span className="text-gray-600">
-              {rewardPerPerson || 0}pt × {maxParticipants || 0}人
-            </span>
-
-            <span className="text-2xl font-bold text-gray-900">
-              {(
-                (Number(rewardPerPerson) || 0) *
-                (Number(maxParticipants) || 0)
-              ).toLocaleString()}
-              pt
-            </span>
-
-          </div>
-
-          <p className="mt-3 text-xs text-gray-500">
-            ※実際のポイント消費はクエスト作成時にサーバー側で確認・処理します。
-          </p>
-
-        </section>
-
-        {/* 作成ボタン */}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-xl bg-black px-5 py-4 font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {submitting
-            ? "確認中..."
-            : "クエストを作成する"}
-        </button>
-
-      </form>
-
+          <button type="submit" disabled={submitting || questTypes.length === 0} className="w-full rounded-2xl bg-[#e7a36d] px-5 py-4 text-base font-bold text-white shadow-[0_5px_14px_rgba(203,136,83,0.2)] transition hover:bg-[#d9925c] disabled:cursor-not-allowed disabled:opacity-50">
+            {submitting ? "確認中..." : "クエストを作成する"}
+          </button>
+        </form>
+      </div>
     </main>
   )
 }

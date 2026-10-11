@@ -1,5 +1,7 @@
 "use client"
 
+import UserAvatar from "@/components/UserAvatar"
+
 import { useState } from "react"
 import { saveProfile } from "@/lib/profile"
 
@@ -32,8 +34,8 @@ export default function ProfileEditor({ user, profile, onSaved }: any) {
 
       <div className="flex items-center gap-4 mb-4">
 
-        <img
-          src={profile?.avatar_url || "/default-avatar.png"}
+        <UserAvatar
+          src={profile?.avatar_url || "/default-avatar.svg"}
           className="w-20 h-20 rounded-full"
         />
 

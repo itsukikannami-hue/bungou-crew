@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
+import OwnedItemsPanel from "@/components/OwnedItemsPanel"
 
 type Item = {
   id: string
@@ -13,6 +14,14 @@ type Item = {
   effect: string | null
   duration: number | null
   is_active: boolean
+}
+
+type PointTransaction = {
+  id: string
+  amount: number
+  type: string | null
+  description: string | null
+  created_at: string
 }
 
 const AD_PRICES = {
@@ -34,10 +43,17 @@ const AD_PRICES = {
 } as const
 
 export default function ItemsPage() {
+  const [activeTab, setActiveTab] = useState<"items" | "points" | "ads">("items")
   const [items, setItems] = useState<Item[]>([])
+  const [ownedOpen, setOwnedOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [points, setPoints] = useState(0)
 const [pointsLoading, setPointsLoading] = useState(true)
+  const [transactions, setTransactions] = useState<PointTransaction[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState("")
+  const [historyLimit, setHistoryLimit] = useState(20)
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
 
   // 広告出稿フォーム
   const [showAdForm, setShowAdForm] = useState(false)
@@ -110,6 +126,37 @@ const [pointsLoading, setPointsLoading] = useState(true)
   }
 
 
+  // ポイントの増減履歴。購入記録との二重計上を避けるため取引台帳のみ参照。
+  const fetchPointHistory = async (limit = 20) => {
+    setHistoryLoading(true)
+    setHistoryError("")
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      setTransactions([])
+      setHasMoreHistory(false)
+      setHistoryError("履歴を見るにはログインしてください。")
+      setHistoryLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from("point_transactions")
+      .select("id,amount,type,description,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(limit + 1)
+
+    if (error) {
+      console.error("ポイント履歴取得エラー:", error)
+      setHistoryError("履歴を取得できませんでした。閲覧権限や通信状態をご確認ください。")
+      setHistoryLoading(false)
+      return
+    }
+    setTransactions((data ?? []).slice(0, limit))
+    setHasMoreHistory((data ?? []).length > limit)
+    setHistoryLoading(false)
+  }
+
   const fetchUserPlan = async () => {
     const {
       data: { user },
@@ -151,6 +198,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
   useEffect(() => {
     fetchItems()
     fetchPoints()
+    fetchPointHistory()
     fetchUserPlan()
   }, [])
 
@@ -189,6 +237,8 @@ const [pointsLoading, setPointsLoading] = useState(true)
       }
 
       alert("アイテムを購入しました。")
+      await fetchPoints()
+      await fetchPointHistory(historyLimit)
     } catch (error) {
       console.error(error)
 
@@ -273,6 +323,8 @@ const [pointsLoading, setPointsLoading] = useState(true)
         userPlan === "free" ? 7 : 15
       )
       setShowAdForm(false)
+      await fetchPoints()
+      await fetchPointHistory(historyLimit)
     } catch (error) {
       console.error(
         "広告出稿エラー:",
@@ -298,43 +350,58 @@ const [pointsLoading, setPointsLoading] = useState(true)
   }
 
   return (
-<main className="mx-auto max-w-5xl p-6">
-
-
-{/* ポイント残高 */}
-<section className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-  <p className="text-sm font-medium text-gray-500">
-    現在のポイント
-  </p>
-
-  {pointsLoading ? (
-    <p className="mt-2 text-gray-400">
-      読み込み中...
-    </p>
-  ) : (
-    <p className="mt-1 text-3xl font-bold text-gray-900">
-      {points.toLocaleString()} pt
-    </p>
-  )}
-</section>
-
-
-
+    <main className="min-h-screen bg-[#fffaf2] px-4 pb-28 pt-6 text-[#594638] sm:px-6">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-5 text-center">
+          <h1 className="text-2xl font-bold text-[#694b38]">ショップ</h1>
+          <p className="mt-2 text-sm text-[#947e6d]">執筆のおともを見つけよう</p>
+        </div>
+        <section className="mb-5 rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-sm sm:p-6">
+          <p className="text-sm font-medium text-[#947e6d]">現在の所持ポイント</p>
+          {pointsLoading ? (
+            <p className="mt-2 text-[#947e6d]">読み込み中...</p>
+          ) : (
+            <p className="mt-2 text-3xl font-bold text-[#bc7d4b]">{points.toLocaleString()} <span className="text-base">pt</span></p>
+          )}
+          <button type="button" onClick={() => setActiveTab("points")}
+            className="mt-4 w-full rounded-xl bg-[#d78f57] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#c88047]">
+            ポイントを購入する
+          </button>
+        </section>
+        <div className="mb-5">
+          <button type="button" onClick={() => setOwnedOpen(v => !v)} aria-expanded={ownedOpen} aria-controls="owned-items-shop" className={`flex w-full items-center justify-between border border-[#f0e1d2] bg-white px-5 py-4 text-left font-bold text-[#a36a40] shadow-sm hover:bg-[#fff5e9] ${ownedOpen ? "rounded-t-2xl" : "rounded-2xl"}`}>
+            所持アイテム一覧を見る <span aria-hidden="true">{ownedOpen ? "▲" : "▼"}</span>
+          </button>
+          <div id="owned-items-shop"><OwnedItemsPanel open={ownedOpen} /></div>
+        </div>
+        <div role="tablist" aria-label="ショップの表示切り替え" className="mb-5 grid grid-cols-3 gap-2 rounded-2xl border border-[#f0e1d2] bg-white p-1.5">
+          {([
+            { id: "items", label: "アイテム" },
+            { id: "points", label: "ポイント" },
+            { id: "ads", label: "広告" },
+          ] as const).map((tab) => (
+            <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-xl px-2 py-3 text-sm font-bold transition ${activeTab === tab.id ? "bg-[#fff0df] text-[#bd7846]" : "text-[#947e6d] hover:bg-[#fffaf2]"}`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {activeTab === "items" && (
+          <section aria-label="アイテムショップ">
 {/* アイテムショップ */}
-      <h1 className="text-3xl font-bold text-gray-900">
-        アイテムショップ
-      </h1>
+      <h2 className="text-xl font-bold text-[#694b38]">アイテムショップ</h2>
 
       <p className="mt-2 text-gray-500">
         ポイントを使ってアイテムを購入できます。
       </p>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-3">
 
         {items.map((item) => (
           <div
             key={item.id}
-            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            className="rounded-2xl border border-[#f0e1d2] bg-white p-5 shadow-sm"
           >
 
             <h2 className="text-xl font-bold text-gray-900">
@@ -354,7 +421,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
               onClick={() =>
                 handlePurchase(item.id)
               }
-              className="mt-5 rounded-xl bg-black px-5 py-3 font-bold text-white hover:bg-gray-800"
+              className="mt-5 rounded-xl bg-[#d78f57] px-5 py-3 font-bold text-white hover:bg-[#c88047]"
             >
               購入
             </button>
@@ -364,6 +431,10 @@ const [pointsLoading, setPointsLoading] = useState(true)
 
       </div>
 
+          </section>
+        )}
+        {activeTab === "ads" && (
+          <section aria-label="広告出稿">
       {/* 広告出稿 */}
       <section className="mt-10">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -384,7 +455,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
       onClick={() =>
         setShowAdForm(true)
       }
-      className="rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800"
+      className="rounded-xl bg-[#d78f57] px-5 py-3 text-sm font-bold text-white hover:bg-[#c88047]"
     >
       広告を出稿する
     </button>
@@ -574,7 +645,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
               type="button"
               onClick={handleAdSubmit}
               disabled={adLoading}
-              className="flex-1 rounded-xl bg-black px-5 py-3 font-bold text-white hover:bg-gray-800 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-[#d78f57] px-5 py-3 font-bold text-white hover:bg-[#c88047] disabled:opacity-50"
             >
               {adLoading
                 ? "処理中..."
@@ -586,9 +657,13 @@ const [pointsLoading, setPointsLoading] = useState(true)
         </section>
       )}
 
-      {/* ポイント購入 */}
-<section className="mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-  <h2 className="text-2xl font-bold text-gray-900">
+                </section>
+        )}
+        {activeTab === "points" && (
+          <section aria-label="ポイント管理">
+{/* ポイント購入 */}
+<section className="mb-5 rounded-2xl border border-[#f0e1d2] bg-white p-5 shadow-sm">
+  <h2 className="text-xl font-bold text-[#694b38]">
     ポイントを購入
   </h2>
 
@@ -596,7 +671,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
     ポイントを購入して、アイテムや広告出稿に利用できます。
   </p>
 
-  <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+  <div className="mt-6 grid grid-cols-1 gap-3">
     {[
       { points: 100, amount: 100 },
       { points: 300, amount: 300 },
@@ -652,7 +727,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
               alert("ポイント購入処理に失敗しました。")
             }
           }}
-          className="mt-4 w-full rounded-xl bg-black px-4 py-3 font-bold text-white hover:bg-gray-800"
+          className="mt-4 w-full rounded-xl bg-[#d78f57] px-4 py-3 font-bold text-white hover:bg-[#c88047]"
         >
           購入する
         </button>
@@ -661,6 +736,53 @@ const [pointsLoading, setPointsLoading] = useState(true)
   </div>
 </section>
 
+            {/* ポイント取引履歴 */}
+            <section aria-label="ポイント履歴" className="mb-6 rounded-2xl border border-[#f0e1d2] bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-[#694b38]">ポイント履歴</h2>
+                  <p className="mt-1 text-sm text-[#947e6d]">獲得・購入・使用したポイントの記録</p>
+                </div>
+                <button type="button" onClick={() => { fetchPoints(); fetchPointHistory(historyLimit) }}
+                  disabled={historyLoading} className="rounded-xl border border-[#f0d9c4] px-3 py-2 text-sm font-semibold text-[#bc7d4b] hover:bg-[#fff7ee] disabled:opacity-50">
+                  更新
+                </button>
+              </div>
+              {historyLoading ? (
+                <p className="py-8 text-center text-sm text-[#947e6d]">履歴を読み込んでいます...</p>
+              ) : historyError ? (
+                <p role="alert" className="py-8 text-center text-sm text-[#b45d50]">{historyError}</p>
+              ) : transactions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-[#947e6d]">まだポイントの取引履歴がありません。</p>
+              ) : (
+                <div className="mt-4 divide-y divide-[#f4e9dc]">
+                  {transactions.map((transaction) => (
+                    <div key={transaction.id} className="flex items-center justify-between gap-3 py-4">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-semibold text-[#694b38]">
+                          {transaction.description?.trim() || transaction.type || "ポイント取引"}
+                        </p>
+                        <p className="mt-1 text-xs text-[#947e6d]">
+                          {new Date(transaction.created_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 font-bold tabular-nums ${transaction.amount >= 0 ? "text-[#bc7d4b]" : "text-[#947e6d]"}`}>
+                        {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()} pt
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!historyLoading && !historyError && hasMoreHistory && (
+                <button type="button" onClick={() => { const next = historyLimit + 20; setHistoryLimit(next); fetchPointHistory(next) }}
+                  className="mt-4 w-full rounded-xl border border-[#f0d9c4] py-3 text-sm font-semibold text-[#bc7d4b] hover:bg-[#fff7ee]">
+                  さらに20件表示
+                </button>
+              )}
+            </section>
+          </section>
+        )}
+      </div>
     </main>
   )
 }

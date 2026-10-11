@@ -1,5 +1,7 @@
 "use client"
 
+import UserAvatar from "@/components/UserAvatar"
+
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import type { User } from "@supabase/supabase-js"
@@ -140,10 +142,10 @@ export default function FollowingPage() {
             >
 
 
-              <img
+              <UserAvatar
                 src={
                   profile.avatar_url ||
-                  "/default.png"
+                  "/default-avatar.svg"
                 }
                 className="
                   w-12

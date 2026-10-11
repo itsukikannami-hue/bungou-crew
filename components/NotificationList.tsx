@@ -5,6 +5,12 @@ import { supabase } from "@/lib/supabaseClient"
 import { getNotifications, markAsRead } from "@/lib/notification"
 import { createNotification } from "@/lib/notification"
 
+function displayNoticeContent(n: { type: string; content: string }): string {
+  return /repost|retweet/i.test(n.type)
+    ? n.content.replace(/リポスト/g, "拡散").replace(/リツイート/g, "拡散")
+    : n.content
+}
+
 export default function NotificationList({ userId }: any) {
 
   const [notifications,setNotifications] = useState<any[]>([])
@@ -62,7 +68,7 @@ export default function NotificationList({ userId }: any) {
           onClick={()=>markAsRead(n.id)}
         >
 
-          <div>{n.content}</div>
+          <div>{displayNoticeContent(n)}</div>
 
           {!n.is_read && (
             <span className="text-xs text-red-500">

@@ -1,5 +1,7 @@
 "use client"
 
+import UserAvatar from "@/components/UserAvatar"
+
 interface Props {
   username: string
   bio: string
@@ -18,8 +20,8 @@ export default function ProfileHeader({
   return (
     <div className="bg-white p-6 rounded-xl border text-center">
 
-      <img
-        src={avatarUrl || "/default.png"}
+      <UserAvatar
+        src={avatarUrl || "/default-avatar.svg"}
         className="w-20 h-20 rounded-full mx-auto mb-3"
       />
 

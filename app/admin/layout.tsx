@@ -36,7 +36,7 @@ export default function AdminLayout({
       href: "/admin/quests",
     },
     {
-      name: "クエスト通報",
+      name: "通報",
       href: "/admin/reports",
     },
     {

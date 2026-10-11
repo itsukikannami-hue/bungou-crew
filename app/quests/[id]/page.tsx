@@ -1,5 +1,7 @@
 "use client"
 
+import UserAvatar from "@/components/UserAvatar"
+
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -1592,9 +1594,9 @@ if (applicantsError) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-[#fff9f1] px-4 py-6 pb-28 sm:px-6">
         <div className="mx-auto max-w-3xl">
-          <p className="text-gray-500">
+          <p className="text-[#9a806c]">
             クエストを読み込んでいます...
           </p>
         </div>
@@ -1605,16 +1607,16 @@ if (applicantsError) {
 
   if (!quest) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-[#fff9f1] px-4 py-6 pb-28 sm:px-6">
         <div className="mx-auto max-w-3xl">
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <div className="rounded-2xl border border-[#f0dfcc] bg-white p-8 text-center shadow-sm">
 
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-[#624b3a]">
               クエストが見つかりません
             </h1>
 
-            <p className="mt-3 text-sm text-gray-500">
+            <p className="mt-3 text-sm text-[#9a806c]">
               このクエストは存在しないか、
               削除された可能性があります。
             </p>
@@ -1646,33 +1648,173 @@ if (applicantsError) {
     !applied
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-[#fff9f1] px-4 py-6 pb-28 sm:px-6">
 
       <div className="mx-auto max-w-3xl">
 
         {/* 戻る */}
         <Link
           href="/quests"
-          className="text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="text-sm font-medium text-[#a36d46] hover:text-[#845332]"
         >
           ← クエスト一覧に戻る
         </Link>
 
 
         {/* クエストカード */}
-        <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mt-5 rounded-[28px] border border-[#f0dfcc] bg-white p-5 shadow-[0_8px_30px_rgba(119,83,45,0.06)] sm:p-8">
 
           {/* クエスト種類 */}
-          <div className="text-sm font-bold text-purple-600">
+          <div className="inline-flex rounded-full bg-[#fff0df] px-3 py-1 text-sm font-bold text-[#b7753d]">
             {quest.quest_type?.name ?? "クエスト"}
           </div>
 
 
           {/* タイトル */}
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">
+          <h1 className="mt-3 text-2xl font-bold leading-snug text-[#624b3a]">
             {quest.title}
           </h1>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+              quest.status === "open" && !isDeadlinePassed
+                ? "bg-[#e9f5e7] text-[#527f4b]"
+                : quest.status === "completed"
+                  ? "bg-[#f2e9fc] text-[#785aa2]"
+                  : quest.status === "in_progress"
+                    ? "bg-[#fff0db] text-[#b47739]"
+                    : "bg-[#f2eee9] text-[#897665]"
+            }`}>
+              {quest.status === "open" && !isDeadlinePassed
+                ? "募集中"
+                : quest.status === "completed"
+                  ? "完了"
+                  : quest.status === "in_progress"
+                    ? "進行中"
+                    : isDeadlinePassed && quest.status === "open"
+                      ? "募集終了"
+                      : quest.status === "cancelled"
+                        ? "キャンセル済み"
+                        : quest.status}
+            </span>
+            <span className="text-xs text-[#a58b76]">応募期限：{formatDeadline(quest.deadline)}</span>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-[#fff7ed] p-4">
+              <p className="text-xs text-[#a08771]">1人あたり報酬</p>
+              <p className="mt-1 text-xl font-bold text-[#b97843]">{quest.reward_per_person.toLocaleString()} pt</p>
+            </div>
+            <div className="rounded-2xl bg-[#fff7ed] p-4">
+              <p className="text-xs text-[#a08771]">募集人数</p>
+              <p className="mt-1 text-xl font-bold text-[#624b3a]">{quest.max_participants}人</p>
+            </div>
+            <div className="col-span-2 rounded-2xl bg-[#fff7ed] p-4 sm:col-span-1">
+              <p className="text-xs text-[#a08771]">現在の応募者</p>
+              <p className="mt-1 text-xl font-bold text-[#624b3a]">{applicationCount}人</p>
+            </div>
+          </div>
+          <div className="mt-6 rounded-2xl border border-[#f2e3d2] bg-[#fffaf5] p-5">
+            <h2 className="font-bold text-[#624b3a]">依頼内容</h2>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#725b49]">{quest.description}</p>
+          </div>
 
+
+
+
+          {/* 応募 */}
+          <section className="mt-8">
+
+            {applied ? (
+
+              <div className="rounded-2xl bg-green-50 p-6 text-center">
+
+                <div className="text-2xl">
+                  ✓
+                </div>
+
+                <p className="mt-2 font-bold text-green-700">
+                  このクエストに応募済みです
+                </p>
+
+                <p className="mt-2 text-sm text-green-600">
+                  依頼者が応募内容を確認しています。
+                </p>
+
+              </div>
+
+            ) : isRequester ? (
+
+              <div className="rounded-2xl bg-[#fff9f2] p-6 text-center">
+
+                <p className="font-bold text-[#725b49]">
+                  自分が作成したクエストです
+                </p>
+
+              </div>
+
+            ) : isDeadlinePassed ? (
+
+              <div className="rounded-2xl bg-[#fff9f2] p-6 text-center">
+
+                <p className="font-bold text-[#8d7563]">
+                  応募受付終了
+                </p>
+
+              </div>
+
+
+            ) : quest.status !== "open" ? (
+
+              <div className="rounded-2xl bg-[#fff9f2] p-6 text-center">
+
+                <p className="font-bold text-[#8d7563]">
+                  現在応募できません
+                </p>
+
+              </div>
+
+            ) : (
+
+              <div>
+
+                <h2 className="text-lg font-bold text-[#624b3a]">
+                  クエストに応募する
+                </h2>
+
+
+                {/* 応募メッセージ */}
+                <textarea
+                  value={applicationMessage}
+                  onChange={(e) =>
+                    setApplicationMessage(e.target.value)
+                  }
+                  rows={6}
+                  maxLength={2000}
+                  placeholder="依頼者へのメッセージがあれば入力してください。"
+                  className="mt-3 w-full rounded-xl border border-[#ead8c6] px-4 py-3 text-sm outline-none focus:border-[#d99862] focus:ring-2 focus:ring-[#f9e6d4]"
+                />
+
+
+                <div className="mt-1 text-right text-xs text-gray-400">
+                  {applicationMessage.length}/2000
+                </div>
+
+
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={!canApply || applying}
+                  className="mt-4 w-full rounded-xl bg-[#d99259] px-5 py-4 font-bold text-white hover:bg-[#c67e48] disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  {applying
+                    ? "応募しています..."
+                    : "このクエストに応募する"}
+                </button>
+
+              </div>
+
+            )}
+
+          </section>
 
 
 
@@ -1680,22 +1822,22 @@ if (applicantsError) {
 {userId === quest.requester_id && (
   <section className="mt-8">
 
-    <h2 className="text-lg font-bold text-gray-900">
+    <h2 className="text-lg font-bold text-[#624b3a]">
       応募者
     </h2>
 
     {loadingApplicants ? (
 
-      <div className="mt-3 rounded-2xl bg-gray-50 p-6 text-center">
-        <p className="text-sm text-gray-500">
+      <div className="mt-3 rounded-2xl bg-[#fff9f2] p-6 text-center">
+        <p className="text-sm text-[#9a806c]">
           応募者を読み込んでいます...
         </p>
       </div>
 
     ) : applicants.length === 0 ? (
 
-      <div className="mt-3 rounded-2xl bg-gray-50 p-6 text-center">
-        <p className="text-sm text-gray-500">
+      <div className="mt-3 rounded-2xl bg-[#fff9f2] p-6 text-center">
+        <p className="text-sm text-[#9a806c]">
           まだ応募者はいません。
         </p>
       </div>
@@ -1719,26 +1861,16 @@ if (applicantsError) {
           return (
             <div
               key={applicant.id}
-              className="rounded-2xl border border-gray-200 bg-white p-5"
+              className="rounded-2xl border border-[#f0dfcc] bg-white p-5 shadow-sm"
             >
 
               {/* ユーザー情報 */}
               <div className="flex items-center gap-3">
 
-                {applicant.profile?.avatar_url ? (
-                  <img
-                    src={applicant.profile.avatar_url}
-                    alt={applicantName}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-600">
-                    {applicantName.charAt(0)}
-                  </div>
-                )}
+                <UserAvatar src={applicant.profile?.avatar_url} alt={applicantName} className="h-10 w-10 rounded-full object-cover" />
 
                 <div>
-                  <p className="font-bold text-gray-900">
+                  <p className="font-bold text-[#624b3a]">
                     {applicantName}
                   </p>
 
@@ -1770,7 +1902,7 @@ if (applicantsError) {
 
                 ) : (
 
-                  <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
+                  <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-[#8d7563]">
                     {applicant.status}
                   </span>
 
@@ -1781,13 +1913,13 @@ if (applicantsError) {
 
               {/* 応募メッセージ */}
               {applicant.message && (
-                <div className="mt-4 rounded-xl bg-gray-50 p-4">
+                <div className="mt-4 rounded-2xl border border-[#f2e3d2] bg-[#fff9f2] p-4">
 
-                  <p className="text-xs font-bold text-gray-500">
+                  <p className="text-xs font-bold text-[#9a806c]">
                     応募メッセージ
                   </p>
 
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#725b49]">
                     {applicant.message}
                   </p>
 
@@ -1809,7 +1941,7 @@ if (applicantsError) {
                   disabled={
                     acceptingApplicantId !== null
                   }
-                  className="mt-4 w-full rounded-xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  className="mt-4 w-full rounded-xl bg-[#d99259] px-5 py-3 text-sm font-bold text-white hover:bg-[#c67e48] disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
                   {acceptingApplicantId === applicant.id
                     ? "依頼しています..."
@@ -1833,17 +1965,17 @@ if (applicantsError) {
   quest &&
   (userId === quest.requester_id || isParticipant) && (
     <section className="mt-8">
-      <h2 className="text-lg font-bold text-gray-900">
+      <h2 className="text-lg font-bold text-[#624b3a]">
         クエストメッセージ
       </h2>
 
-      <div className="mt-3 rounded-2xl border border-gray-200 bg-white">
+      <div className="mt-3 rounded-2xl border border-[#f0dfcc] bg-white">
 
         {/* メッセージ一覧 */}
         <div className="max-h-96 space-y-3 overflow-y-auto p-4">
 
           {messages.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-500">
+            <p className="py-8 text-center text-sm text-[#9a806c]">
               まだメッセージはありません。
             </p>
           ) : (
@@ -1863,8 +1995,8 @@ if (applicantsError) {
                   <div
                     className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                       isMine
-                        ? "bg-black text-white"
-                        : "bg-gray-100 text-gray-900"
+                        ? "bg-[#d99259] text-white"
+                        : "bg-[#fff1e4] text-[#624b3a]"
                     }`}
                   >
                     <p className="whitespace-pre-wrap text-sm leading-6">
@@ -1875,7 +2007,7 @@ if (applicantsError) {
                       className={`mt-1 text-xs ${
                         isMine
                           ? "text-gray-300"
-                          : "text-gray-500"
+                          : "text-[#9a806c]"
                       }`}
                     >
                       {new Date(
@@ -1896,7 +2028,7 @@ if (applicantsError) {
         </div>
 
         {/* メッセージ入力 */}
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-[#f0dfcc] p-4">
 
           <textarea
             value={messageText}
@@ -1906,7 +2038,7 @@ if (applicantsError) {
             rows={3}
             maxLength={2000}
             placeholder="依頼者・受注者へのメッセージを入力してください。"
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+            className="w-full rounded-xl border border-[#ead8c6] px-4 py-3 text-sm outline-none focus:border-[#d99862] focus:ring-2 focus:ring-[#f9e6d4]"
           />
 
           <div className="mt-2 flex items-center justify-between">
@@ -1922,7 +2054,7 @@ if (applicantsError) {
                 sendingMessage ||
                 !messageText.trim()
               }
-              className="rounded-xl bg-black px-5 py-2.5 text-sm font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className="rounded-xl bg-[#d99259] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#c67e48] disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {sendingMessage
                 ? "送信中..."
@@ -1941,29 +2073,29 @@ if (applicantsError) {
 {userId === quest.requester_id && (
   <section className="mt-8">
 
-    <h2 className="text-lg font-bold text-gray-900">
+    <h2 className="text-lg font-bold text-[#624b3a]">
       提出された成果物
     </h2>
 
     {loadingSubmission ? (
 
-      <div className="mt-3 rounded-2xl bg-gray-50 p-6 text-center">
-        <p className="text-sm text-gray-500">
+      <div className="mt-3 rounded-2xl bg-[#fff9f2] p-6 text-center">
+        <p className="text-sm text-[#9a806c]">
           成果物を読み込んでいます...
         </p>
       </div>
 
     ) : !submission ? (
 
-      <div className="mt-3 rounded-2xl bg-gray-50 p-6 text-center">
-        <p className="text-sm text-gray-500">
+      <div className="mt-3 rounded-2xl bg-[#fff9f2] p-6 text-center">
+        <p className="text-sm text-[#9a806c]">
           まだ成果物は提出されていません。
         </p>
       </div>
 
     ) : (
 
-      <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-5">
+      <div className="mt-3 rounded-2xl border border-[#f0dfcc] bg-white p-5 shadow-sm">
 
         <div className="flex items-center justify-between gap-3">
 
@@ -1993,13 +2125,13 @@ if (applicantsError) {
 
         <div className="mt-5">
 
-          <p className="text-xs font-bold text-gray-500">
+          <p className="text-xs font-bold text-[#9a806c]">
             成果物
           </p>
 
-          <div className="mt-2 rounded-xl bg-gray-50 p-5">
+          <div className="mt-2 rounded-2xl border border-[#f2e3d2] bg-[#fff9f2] p-5">
 
-            <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+            <p className="whitespace-pre-wrap text-sm leading-7 text-[#725b49]">
               {submission.content}
             </p>
 
@@ -2029,11 +2161,11 @@ if (applicantsError) {
   quest.status === "in_progress" && (
     <div className="mt-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
 
-      <h3 className="font-bold text-gray-900">
+      <h3 className="font-bold text-[#624b3a]">
         報酬を確定する
       </h3>
 
-      <p className="mt-2 text-sm leading-6 text-gray-600">
+      <p className="mt-2 text-sm leading-6 text-[#8d7563]">
         成果物の確認が完了しています。
         問題がなければ報酬を確定してください。
       </p>
@@ -2042,11 +2174,11 @@ if (applicantsError) {
 
         <div className="flex items-center justify-between">
 
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-[#9a806c]">
             受注者への報酬
           </span>
 
-          <span className="text-xl font-bold text-gray-900">
+          <span className="text-xl font-bold text-[#624b3a]">
             {quest.reward_per_person.toLocaleString()} pt
           </span>
 
@@ -2083,11 +2215,11 @@ if (applicantsError) {
 
       <div className="flex items-center justify-between">
 
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-[#9a806c]">
           確定報酬
         </span>
 
-        <span className="text-xl font-bold text-gray-900">
+        <span className="text-xl font-bold text-[#624b3a]">
           {quest.reward_per_person.toLocaleString()} pt
         </span>
 
@@ -2141,24 +2273,24 @@ if (applicantsError) {
               💬
             </span>
 
-            <h3 className="font-bold text-gray-900">
+            <h3 className="font-bold text-[#624b3a]">
               感想をタイムラインに公開する
             </h3>
 
           </div>
 
-          <p className="mt-3 text-sm leading-6 text-gray-600">
+          <p className="mt-3 text-sm leading-6 text-[#8d7563]">
             受注者が書いてくれた感想を、
             ブンゴウクルーのタイムラインに公開できます。
           </p>
 
           <div className="mt-4 rounded-xl bg-white p-4">
 
-            <p className="text-xs font-bold text-gray-500">
+            <p className="text-xs font-bold text-[#9a806c]">
               公開される感想
             </p>
 
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-700">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#725b49]">
               {submission.content}
             </p>
 
@@ -2168,14 +2300,14 @@ if (applicantsError) {
             type="button"
             onClick={handlePublishFeedback}
             disabled={publishingFeedback}
-            className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="mt-4 w-full rounded-xl bg-[#d99259] px-5 py-4 font-bold text-white hover:bg-[#c67e48] disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {publishingFeedback
               ? "タイムラインに公開しています..."
               : "📢 感想をタイムラインに公開する"}
           </button>
 
-          <p className="mt-3 text-center text-xs text-gray-500">
+          <p className="mt-3 text-center text-xs text-[#9a806c]">
             公開すると、ブンゴウクルーの他のユーザーもこの感想を読むことができます。
           </p>
 
@@ -2189,13 +2321,13 @@ if (applicantsError) {
 {submission &&
   submission.status === "submitted" &&
   userId === quest.requester_id && (
-    <div className="mt-6 border-t border-gray-200 pt-5">
+    <div className="mt-6 border-t border-[#f0dfcc] pt-5">
 
-      <h3 className="font-bold text-gray-900">
+      <h3 className="font-bold text-[#624b3a]">
         成果物を確認する
       </h3>
 
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-[#9a806c]">
         成果物を確認して、問題がなければ承認してください。
       </p>
 
@@ -2212,9 +2344,9 @@ if (applicantsError) {
       </button>
 
       {/* 修正依頼 */}
-      <div className="mt-6 border-t border-gray-200 pt-5">
+      <div className="mt-6 border-t border-[#f0dfcc] pt-5">
 
-        <h4 className="font-bold text-gray-900">
+        <h4 className="font-bold text-[#624b3a]">
           修正を依頼する
         </h4>
 
@@ -2226,7 +2358,7 @@ if (applicantsError) {
           rows={5}
           maxLength={2000}
           placeholder="修正してほしい内容を入力してください。"
-          className="mt-3 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+          className="mt-3 w-full rounded-xl border border-[#ead8c6] px-4 py-3 text-sm outline-none focus:border-[#d99862] focus:ring-2 focus:ring-[#f9e6d4]"
         />
 
         <div className="mt-1 text-right text-xs text-gray-400">
@@ -2266,12 +2398,12 @@ if (applicantsError) {
       </h3>
     </div>
 
-    <p className="mt-3 text-sm font-bold text-gray-700">
+    <p className="mt-3 text-sm font-bold text-[#725b49]">
       依頼者からの修正内容
     </p>
 
     <div className="mt-2 rounded-xl bg-white p-4">
-      <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
+      <p className="whitespace-pre-wrap text-sm leading-6 text-[#725b49]">
         {submission.revision_comment ||
           "修正内容が指定されていません。"}
       </p>
@@ -2285,7 +2417,7 @@ if (applicantsError) {
 {isParticipant && (
   <section className="mt-8">
 
-    <h2 className="text-lg font-bold text-gray-900">
+    <h2 className="text-lg font-bold text-[#624b3a]">
       成果物を提出する
     </h2>
 
@@ -2310,7 +2442,7 @@ if (applicantsError) {
 
         <div className="mt-4 rounded-xl bg-white p-4">
 
-          <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+          <p className="whitespace-pre-wrap text-sm leading-7 text-[#725b49]">
             {submissionContent}
           </p>
 
@@ -2325,11 +2457,11 @@ if (applicantsError) {
     quest.quest_type?.name === "読後レビュー依頼") && (
   <div className="mt-5 border-t border-green-200 pt-5">
 
-    <h3 className="font-bold text-gray-900">
+    <h3 className="font-bold text-[#624b3a]">
       感想をタイムラインに公開
     </h3>
 
-    <p className="mt-2 text-sm leading-6 text-gray-600">
+    <p className="mt-2 text-sm leading-6 text-[#8d7563]">
       この感想をタイムラインに公開できます。
       公開すると、他のユーザーもこの感想を読むことができます。
     </p>
@@ -2345,7 +2477,7 @@ if (applicantsError) {
         type="button"
         onClick={handlePublishFeedback}
         disabled={publishingFeedback}
-        className="mt-4 w-full rounded-xl bg-purple-600 px-5 py-4 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+        className="mt-4 w-full rounded-xl bg-[#d99259] px-5 py-4 font-bold text-white hover:bg-[#c67e48] disabled:cursor-not-allowed disabled:bg-gray-300"
       >
         {publishingFeedback
           ? "公開しています..."
@@ -2379,7 +2511,7 @@ if (applicantsError) {
 
         <div className="mt-4 rounded-xl bg-white p-4">
 
-          <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
+          <p className="whitespace-pre-wrap text-sm leading-7 text-[#725b49]">
             {submissionContent}
           </p>
 
@@ -2396,7 +2528,7 @@ if (applicantsError) {
       /* =========================
          未提出 / 修正依頼後
          ========================= */
-      <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-5">
+      <div className="mt-3 rounded-2xl border border-[#f0dfcc] bg-white p-5 shadow-sm">
 
         <textarea
           value={submissionContent}
@@ -2410,7 +2542,7 @@ if (applicantsError) {
               ? "修正した成果物を入力してください。"
               : "成果物を入力してください。"
           }
-          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+          className="w-full rounded-xl border border-[#ead8c6] px-4 py-3 text-sm outline-none focus:border-[#d99862] focus:ring-2 focus:ring-[#f9e6d4]"
         />
 
         <div className="mt-1 text-right text-xs text-gray-400">
@@ -2424,7 +2556,7 @@ if (applicantsError) {
             submitting ||
             !submissionContent.trim()
           }
-          className="mt-4 w-full rounded-xl bg-black px-5 py-4 font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="mt-4 w-full rounded-xl bg-[#d99259] px-5 py-4 font-bold text-white hover:bg-[#c67e48] disabled:cursor-not-allowed disabled:bg-gray-300"
         >
           {submitting
             ? "提出しています..."
@@ -2439,89 +2571,6 @@ if (applicantsError) {
 
   </section>
 )}
-
-          {/* 依頼内容 */}
-          <section className="mt-8">
-
-            <h2 className="text-lg font-bold text-gray-900">
-              依頼内容
-            </h2>
-
-            <div className="mt-3 rounded-xl bg-gray-50 p-5">
-
-              <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                {quest.description}
-              </p>
-
-            </div>
-
-          </section>
-
-
-          {/* クエスト情報 */}
-          <section className="mt-8">
-
-            <h2 className="text-lg font-bold text-gray-900">
-              クエスト情報
-            </h2>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-              {/* 報酬 */}
-              <div className="rounded-xl bg-gray-50 p-4">
-
-                <p className="text-xs text-gray-500">
-                  1人あたり報酬
-                </p>
-
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {quest.reward_per_person.toLocaleString()} pt
-                </p>
-
-              </div>
-
-
-
-
-{/* 募集人数 */}
-<div className="rounded-xl bg-gray-50 p-4">
-  <p className="text-xs text-gray-500">
-    募集人数
-  </p>
-
-  <p className="mt-1 text-xl font-bold text-gray-900">
-    {quest.max_participants}人
-  </p>
-</div>
-
-{/* 応募者数 */}
-<div className="rounded-xl bg-gray-50 p-4">
-  <p className="text-xs text-gray-500">
-    現在の応募者
-  </p>
-
-  <p className="mt-1 text-xl font-bold text-gray-900">
-    {applicationCount}人
-  </p>
-</div>
-
-
-              {/* 期限 */}
-              <div className="rounded-xl bg-gray-50 p-4">
-
-                <p className="text-xs text-gray-500">
-                  期限
-                </p>
-
-                <p className="mt-1 text-sm font-bold text-gray-900">
-                  {formatDeadline(quest.deadline)}
-                </p>
-
-              </div>
-
-            </div>
-
-          </section>
 
           {isRequester && quest.status === "open" && (
   <section className="mt-8">
@@ -2540,7 +2589,7 @@ if (applicantsError) {
           {quest.target_url && (
             <section className="mt-8">
 
-              <h2 className="text-lg font-bold text-gray-900">
+              <h2 className="text-lg font-bold text-[#624b3a]">
                 対象作品
               </h2>
 
@@ -2548,7 +2597,7 @@ if (applicantsError) {
                 href={quest.target_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 block break-all rounded-xl bg-gray-50 p-4 text-sm text-blue-600 underline hover:text-blue-800"
+                className="mt-3 block break-all rounded-2xl border border-[#f2e3d2] bg-[#fff9f2] p-4 text-sm text-blue-600 underline hover:text-blue-800"
               >
                 {quest.target_url}
               </a>
@@ -2557,114 +2606,18 @@ if (applicantsError) {
           )}
 
 
-          {/* 応募 */}
-          <section className="mt-8">
-
-            {applied ? (
-
-              <div className="rounded-2xl bg-green-50 p-6 text-center">
-
-                <div className="text-2xl">
-                  ✓
-                </div>
-
-                <p className="mt-2 font-bold text-green-700">
-                  このクエストに応募済みです
-                </p>
-
-                <p className="mt-2 text-sm text-green-600">
-                  依頼者が応募内容を確認しています。
-                </p>
-
-              </div>
-
-            ) : isRequester ? (
-
-              <div className="rounded-2xl bg-gray-50 p-6 text-center">
-
-                <p className="font-bold text-gray-700">
-                  自分が作成したクエストです
-                </p>
-
-              </div>
-
-            ) : isDeadlinePassed ? (
-
-              <div className="rounded-2xl bg-gray-50 p-6 text-center">
-
-                <p className="font-bold text-gray-600">
-                  応募受付終了
-                </p>
-
-              </div>
-
-
-            ) : quest.status !== "open" ? (
-
-              <div className="rounded-2xl bg-gray-50 p-6 text-center">
-
-                <p className="font-bold text-gray-600">
-                  現在応募できません
-                </p>
-
-              </div>
-
-            ) : (
-
-              <div>
-
-                <h2 className="text-lg font-bold text-gray-900">
-                  クエストに応募する
-                </h2>
-
-
-                {/* 応募メッセージ */}
-                <textarea
-                  value={applicationMessage}
-                  onChange={(e) =>
-                    setApplicationMessage(e.target.value)
-                  }
-                  rows={6}
-                  maxLength={2000}
-                  placeholder="依頼者へのメッセージがあれば入力してください。"
-                  className="mt-3 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
-                />
-
-
-                <div className="mt-1 text-right text-xs text-gray-400">
-                  {applicationMessage.length}/2000
-                </div>
-
-
-                <button
-                  type="button"
-                  onClick={handleApply}
-                  disabled={!canApply || applying}
-                  className="mt-4 w-full rounded-xl bg-black px-5 py-4 font-bold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
-                >
-                  {applying
-                    ? "応募しています..."
-                    : "このクエストに応募する"}
-                </button>
-
-              </div>
-
-            )}
-
-          </section>
-
           {/* 通報 */}
-<section className="mt-10 border-t border-gray-200 pt-6">
+<section className="mt-10 border-t border-[#f0dfcc] pt-6">
 
 {reported ? (
 
-  <div className="rounded-xl bg-gray-50 p-4 text-center">
+  <div className="rounded-2xl border border-[#f2e3d2] bg-[#fff9f2] p-4 text-center">
 
-    <p className="text-sm font-bold text-gray-600">
+    <p className="text-sm font-bold text-[#8d7563]">
       このクエストは通報済みです
     </p>
 
-    <p className="mt-1 text-xs text-gray-500">
+    <p className="mt-1 text-xs text-[#9a806c]">
       ご報告ありがとうございます。
     </p>
 
@@ -2676,7 +2629,7 @@ if (applicantsError) {
     type="button"
     onClick={() => setReportOpen(true)}
     disabled={!userId}
-    className="w-full rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100"
+    className="w-full rounded-xl border border-[#ead8c6] bg-white px-5 py-3 text-sm font-bold text-[#8d7563] hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100"
   >
     ⚠️ このクエストを通報する
   </button>
@@ -2697,7 +2650,7 @@ if (applicantsError) {
 
       <div className="flex items-center justify-between">
 
-        <h2 className="text-lg font-bold text-gray-900">
+        <h2 className="text-lg font-bold text-[#624b3a]">
           クエストを通報
         </h2>
 
@@ -2705,21 +2658,21 @@ if (applicantsError) {
           type="button"
           onClick={() => setReportOpen(false)}
           disabled={reporting}
-          className="text-xl text-gray-400 hover:text-gray-700"
+          className="text-xl text-gray-400 hover:text-[#725b49]"
         >
           ×
         </button>
 
       </div>
 
-      <p className="mt-3 text-sm leading-6 text-gray-600">
+      <p className="mt-3 text-sm leading-6 text-[#8d7563]">
         このクエストに問題がある場合は、理由を選択して通報してください。
       </p>
 
       {/* 通報理由 */}
       <div className="mt-5">
 
-        <label className="text-sm font-bold text-gray-900">
+        <label className="text-sm font-bold text-[#624b3a]">
           通報理由
         </label>
 
@@ -2729,7 +2682,7 @@ if (applicantsError) {
     setReportReason(e.target.value)
   }
   disabled={reporting}
-  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm outline-none focus:border-black"
+  className="mt-2 w-full rounded-xl border border-[#ead8c6] bg-white px-4 py-3 text-sm outline-none focus:border-[#d99862] focus:ring-2 focus:ring-[#f9e6d4]"
 >
   <option value="">
     通報理由を選択してください
@@ -2765,7 +2718,7 @@ if (applicantsError) {
       {/* 詳細説明 */}
       <div className="mt-5">
 
-        <label className="text-sm font-bold text-gray-900">
+        <label className="text-sm font-bold text-[#624b3a]">
           詳細説明
           <span className="ml-2 text-xs font-normal text-gray-400">
             任意
@@ -2781,7 +2734,7 @@ if (applicantsError) {
           rows={5}
           maxLength={2000}
           placeholder="問題だと思った点を具体的に入力してください。"
-          className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black"
+          className="mt-2 w-full rounded-xl border border-[#ead8c6] px-4 py-3 text-sm outline-none focus:border-[#d99862] focus:ring-2 focus:ring-[#f9e6d4]"
         />
 
         <div className="mt-1 text-right text-xs text-gray-400">
@@ -2791,9 +2744,9 @@ if (applicantsError) {
       </div>
 
       {/* 注意 */}
-      <div className="mt-5 rounded-xl bg-gray-50 p-4">
+      <div className="mt-5 rounded-2xl border border-[#f2e3d2] bg-[#fff9f2] p-4">
 
-        <p className="text-xs leading-5 text-gray-500">
+        <p className="text-xs leading-5 text-[#9a806c]">
           通報内容は運営が確認します。
           虚偽の通報や悪意のある通報はお控えください。
         </p>
@@ -2807,7 +2760,7 @@ if (applicantsError) {
           type="button"
           onClick={() => setReportOpen(false)}
           disabled={reporting}
-          className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100"
+          className="flex-1 rounded-xl border border-[#ead8c6] bg-white px-4 py-3 text-sm font-bold text-[#725b49] hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100"
         >
           キャンセル
         </button>

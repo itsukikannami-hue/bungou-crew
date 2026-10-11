@@ -90,17 +90,40 @@ export async function POST(request: Request) {
             event_type: event.type,
             processed: false,
           })
-
+    
       if (insertEventError) {
-        console.error(
-          "stripe_events登録エラー:",
-          insertEventError
-        )
-
-        return NextResponse.json(
-          { error: "イベント登録に失敗しました" },
-          { status: 500 }
-        )
+        // 同時実行などで既に登録されている場合は、
+        // 既存イベントとして処理を続ける
+        const { data: retryEvent } =
+          await supabase
+            .from("stripe_events")
+            .select("id, processed")
+            .eq("event_id", event.id)
+            .maybeSingle()
+    
+        if (retryEvent?.processed) {
+          console.log(
+            "Stripe Event already processed:",
+            event.id
+          )
+    
+          return NextResponse.json({
+            received: true,
+            duplicate: true,
+          })
+        }
+    
+        if (!retryEvent) {
+          console.error(
+            "stripe_events登録エラー:",
+            insertEventError
+          )
+    
+          return NextResponse.json(
+            { error: "イベント登録に失敗しました" },
+            { status: 500 }
+          )
+        }
       }
     }
 

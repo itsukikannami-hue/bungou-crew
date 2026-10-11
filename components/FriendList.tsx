@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { getFriends } from "@/lib/friends"
-import CallButton from "./CallButton"
 import type { User } from "@supabase/supabase-js"
 
 type FriendListProps = {
@@ -64,10 +63,6 @@ export default function FriendList({
       {friends.map(f => (
         <div key={f.id} className="flex justify-between items-center border-b py-2">
           <span>{f.username}</span>
-          <CallButton
-  friendId={f.user_id}
-  friendName={f.username ?? "名無し"}
-/>
         </div>
       ))}
     </div>

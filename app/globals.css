@@ -1,29 +1,62 @@
 @import "tailwindcss";
 
+/* ブンゴウクルー 共通デザイン */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fff9f0;
+  --foreground: #735c48;
+  --surface: #ffffff;
+  --brand: #eba96e;
+  --brand-strong: #c77f43;
+  --brand-soft: #fff0df;
+  --muted: #927b69;
+  --border-soft: #f2deca;
+  --shadow-soft: 0 4px 16px rgb(115 92 72 / 8%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-surface: var(--surface);
+  --font-sans: Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html { background: var(--background); }
 body {
+  margin: 0;
+  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
 }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--brand-strong); outline-offset: 3px; }
+
+.bc-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+}
+.bc-button-primary, .bc-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  transition: opacity .2s ease;
+}
+.bc-button-primary { background: var(--brand); color: #fff; border: 1px solid var(--brand); }
+.bc-button-secondary { background: #fff; color: var(--brand-strong); border: 1px solid var(--brand); }
+.bc-button-primary:hover, .bc-button-secondary:hover { opacity: .88; }
+.bc-tab-active { color: var(--brand-strong); border-bottom: 3px solid var(--brand); font-weight: 700; }
+.bc-input { background: #fff; border: 1px solid var(--border-soft); border-radius: 12px; padding: 10px 14px; }
 
 /* =========================
 🐣 卵ぷかぷか
@@ -169,4 +202,8 @@ body {
   100% {
     transform: scale(1);
   }
+}
+/* 下部ナビゲーションとコンテンツの重なりを防止 */
+body:has(nav[aria-label="メインナビゲーション"]) {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
