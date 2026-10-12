@@ -132,6 +132,15 @@ export default function AdminPage() {
   </div>
 </Link>
 
+          <Link
+            href="/admin/announcements"
+            className="block bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition"
+          >
+            <div className="text-lg font-bold">お知らせ配信</div>
+            <div className="text-sm text-gray-500 mt-1">
+              ユーザー向けのお知らせを作成・配信します。
+            </div>
+          </Link>
         </div>
       </div>
     </main>
