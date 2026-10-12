@@ -113,32 +113,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // 広告停止
+    // 広告停止と監査ログを同一トランザクションで記録
+    const { data: stopped, error: stopError } = await supabaseAdmin.rpc(
+      "stop_ad_with_audit",
+      { p_ad_id: adId, p_actor_user_id: user.id }
+    )
 
-    const {
-      error: updateError,
-    } = await supabaseAdmin
-      .from("ads")
-      .update({
-        status: "stopped",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", adId)
-
-    if (updateError) {
-      console.error(
-        "広告停止DB更新エラー:",
-        updateError
-      )
-
-      return NextResponse.json(
-        {
-          error: "広告の停止に失敗しました。",
-        },
-        {
-          status: 500,
-        }
-      )
+    if (stopError) {
+      console.error("広告停止・監査ログ記録エラー:", stopError)
+      return NextResponse.json({ error: "広告の停止に失敗しました。" }, { status: 500 })
+    }
+    if (!stopped) {
+      return NextResponse.json({ error: "広告がすでに停止されています。" }, { status: 409 })
     }
 
     return NextResponse.json({

@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 export const dynamic = "force-dynamic"
 
-const allowedActions = new Set(["admin_grant", "admin_remove"])
+const allowedActions = new Set(["admin_grant", "admin_remove", "ad_stop", "announcement_create", "announcement_send_start", "item_create", "item_update", "item_delete"])
 
 export async function GET(request: Request) {
   try {

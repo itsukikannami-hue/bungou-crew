@@ -9,7 +9,7 @@ type AuditLog = {
   action: string
   target_type: string
   target_id: string | null
-  details: { amount?: number; reason?: string; point_transaction_id?: string } | null
+  details: { amount?: number; reason?: string; title?: string; operation?: string; old_status?: string; new_status?: string; point_transaction_id?: string } | null
   created_at: string
 }
 
@@ -69,7 +69,7 @@ export default function AdminAuditLogsPage() {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">管理者操作の監査ログ</h1>
-          <p className="mt-2 text-sm text-gray-500">ポイント付与・減算の操作履歴を表示します。記録は編集・削除できません。</p>
+          <p className="mt-2 text-sm text-gray-500">ポイント・広告・お知らせ・アイテムの管理操作を表示します。記録は編集・削除できません。</p>
         </div>
         <button type="button" onClick={() => void load()} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50">再読み込み</button>
       </div>
@@ -79,6 +79,12 @@ export default function AdminAuditLogsPage() {
             <option value="">すべて</option>
             <option value="admin_grant">ポイント付与</option>
             <option value="admin_remove">ポイント減算</option>
+            <option value="ad_stop">広告停止</option>
+            <option value="announcement_create">お知らせ作成</option>
+            <option value="announcement_send_start">お知らせ配信開始</option>
+            <option value="item_create">アイテム追加</option>
+            <option value="item_update">アイテム変更</option>
+            <option value="item_delete">アイテム削除</option>
           </select>
         </label>
         <label className="min-w-[250px] flex-1 text-sm text-gray-700">管理者ユーザーID
@@ -91,18 +97,18 @@ export default function AdminAuditLogsPage() {
       <div className="mt-5 overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="bg-gray-50 text-gray-700"><tr>
-            <th className="p-3">日時（日本時間）</th><th className="p-3">操作</th><th className="p-3">管理者ID</th><th className="p-3">対象ユーザーID</th><th className="p-3">ポイント</th><th className="p-3">理由</th>
+            <th className="p-3">日時（日本時間）</th><th className="p-3">操作</th><th className="p-3">管理者ID</th><th className="p-3">対象ID</th><th className="p-3">ポイント</th><th className="p-3">理由</th>
           </tr></thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? <tr><td colSpan={6} className="p-6 text-center text-gray-500">読み込み中...</td></tr>
               : logs.length === 0 ? <tr><td colSpan={6} className="p-6 text-center text-gray-500">該当する監査ログはありません。</td></tr>
               : logs.map((log) => <tr key={log.id}>
                 <td className="whitespace-nowrap p-3">{new Date(log.created_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}</td>
-                <td className="p-3">{log.action === "admin_grant" ? "付与" : log.action === "admin_remove" ? "減算" : log.action}</td>
+                <td className="p-3">{({ admin_grant: "ポイント付与", admin_remove: "ポイント減算", ad_stop: "広告停止", announcement_create: "お知らせ作成", announcement_send_start: "お知らせ配信開始", item_create: "アイテム追加", item_update: "アイテム変更", item_delete: "アイテム削除" } as Record<string,string>)[log.action] ?? log.action}</td>
                 <td className="break-all p-3 text-xs">{log.actor_user_id}</td>
                 <td className="break-all p-3 text-xs">{log.target_id ?? "-"}</td>
                 <td className="whitespace-nowrap p-3 font-medium">{typeof log.details?.amount === "number" ? `${log.details.amount > 0 ? "+" : ""}${log.details.amount.toLocaleString()} pt` : "-"}</td>
-                <td className="max-w-xs break-words p-3">{log.details?.reason ?? "-"}</td>
+                <td className="max-w-xs break-words p-3">{log.details?.reason ?? log.details?.title ?? log.details?.operation ?? (log.details?.new_status ? `${log.details.old_status ?? "?"} → ${log.details.new_status}` : "-")}</td>
               </tr>)}
           </tbody>
         </table>
