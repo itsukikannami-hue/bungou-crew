@@ -5,7 +5,6 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     environment: process.env.NODE_ENV,
     tracesSampleRate: 0,
-    sendDefaultPii: false,
     beforeSend(event) {
       // Do not transmit potentially sensitive URLs or user-entered text.
       if (event.request) {
