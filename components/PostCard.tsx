@@ -267,13 +267,13 @@ const fetchMyCheers = async()=>{
                 if(!commentText.trim())return
                 
                 
-                const {error}=await supabase
+                const { data: createdComment, error }=await supabase
                 .from("post_comments")
                 .insert({
                 post_id:post.id,
                 user_id:user.id,
                 content:commentText
-                })
+                }).select("id").single()
                 
                 
                 if(error){
@@ -294,7 +294,8 @@ const fetchMyCheers = async()=>{
                     `${myProfile?.username ?? "誰か"}さんがあなたの投稿にコメントしました`,
                     user.id,
                     post.id,
-                    `/posts/${post.id}`
+                    `/posts/${post.id}`,
+                     createdComment?.id
                   )
                   if (!notificationResult.success) console.error("コメント通知の保存に失敗しました", notificationResult.error)
                 }
@@ -370,7 +371,7 @@ const fetchMyCheers = async()=>{
                   }
                 }
 
-                const notifyRepost = async (kind: "repost" | "quote") => {
+                const notifyRepost = async (kind: "repost" | "quote", eventId: string) => {
                   if (!user || post.user_id === user.id) return
                   const { data: myProfile } = await supabase
                     .from("profiles")
@@ -385,7 +386,8 @@ const fetchMyCheers = async()=>{
                     `${myProfile?.username ?? "誰か"}さんがあなたの投稿を${action}しました`,
                     user.id,
                     post.id,
-                    `/posts/${post.id}`
+                    `/posts/${post.id}`,
+                     eventId
                   )
                   if (!result.success) {
                     console.error(`${action}通知の保存に失敗しました`, result.error)
@@ -399,11 +401,11 @@ const fetchMyCheers = async()=>{
                   setIsReposting(true)
                   try {
                     // content が NOT NULL のスキーマでも保存できるよう空文字を使用。
-                    const { error } = await supabase.from("posts").insert({
+                    const { data: createdRepost, error } = await supabase.from("posts").insert({
                       user_id: user.id,
                       repost_id: post.id,
                       content: "",
-                    })
+                    }).select("id").single()
                     if (error) {
                       console.error("拡散の保存に失敗しました:", error)
                       setRepostError(`拡散できませんでした：${error.message}`)
@@ -411,7 +413,7 @@ const fetchMyCheers = async()=>{
                     }
                     setOpenRepostMenu(false)
                     await fetchRepostState()
-                    await notifyRepost("repost")
+                    if (createdRepost?.id) await notifyRepost("repost", createdRepost.id)
                   } finally {
                     setIsReposting(false)
                   }
@@ -426,11 +428,11 @@ const fetchMyCheers = async()=>{
                   setRepostError(null)
                   setIsReposting(true)
                   try {
-                    const { error } = await supabase.from("posts").insert({
+                    const { data: createdRepost, error } = await supabase.from("posts").insert({
                       user_id: user.id,
                       content: quoteText.trim(),
                       repost_id: post.id,
-                    })
+                    }).select("id").single()
                     if (error) {
                       console.error("コメ付き拡散の保存に失敗しました:", error)
                       setRepostError(`コメ付き拡散できませんでした：${error.message}`)
@@ -439,7 +441,7 @@ const fetchMyCheers = async()=>{
                     setQuoteText("")
                     setShowQuote(false)
                     await fetchRepostState()
-                    await notifyRepost("quote")
+                    if (createdRepost?.id) await notifyRepost("quote", createdRepost.id)
                   } finally {
                     setIsReposting(false)
                   }

@@ -182,6 +182,7 @@ export default function HomeBungou() {
 const [postText,setPostText] = useState("")
 
 const [sharing, setSharing] = useState(false)
+const [isXRewarded, setIsXRewarded] = useState(false)
 
 const createWritingShareText = async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -207,31 +208,42 @@ const shareWritingToX = async () => {
     alert("執筆記録を確認できません。再度執筆を完了してください。")
     return
   }
+
+  // クリック直後にタブを開き、非同期処理によるポップアップブロックを防ぐ。
+  const popup = window.open("about:blank", "_blank")
+  if (!popup) {
+    alert("ポップアップがブロックされました。ブラウザでポップアップを許可して再度お試しください。")
+    return
+  }
   setSharing(true)
   try {
     const text = await createWritingShareText()
-    if (Array.from(text).length > 280) {
-      alert("Xの投稿文字数制限を超えています。")
-      return
-    }
-    if (!window.confirm(`次の内容をXに投稿します。\n\n${text}\n\n投稿が成功すると10ポイント獲得できます。投稿しますか？`)) return
-    const response = await fetch("/api/x/post", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ writingLogId: lastWritingLogId, text }),
-    })
-    const result = await response.json()
-    if (result.needsConnect) {
-      if (window.confirm("Xへの投稿権限が必要です。Xアカウントを連携しますか？\n連携後に改めて執筆結果を共有してください。")) {
-        window.location.href = "/api/x/connect"
+    const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+    popup.location.replace(intentUrl)
+
+    // 無料方式では投稿完了を検証できないため、X投稿画面を開いた時点で付与。
+    // Supabase側のユニーク制約により、同じ執筆記録での二重付与は不可。
+    if (!isXRewarded) {
+      const { error } = await supabase.rpc("reward_x_share_intent", {
+        p_writing_log_id: lastWritingLogId,
+      })
+      if (error) {
+        if (error.code === "23505") {
+          setIsXRewarded(true)
+          alert("Xの投稿画面を開きました。この執筆記録の10ポイントは付与済みです。")
+        } else {
+          console.error("X共有ポイント付与エラー:", error)
+          alert(`Xの投稿画面を開きましたが、ポイント付与に失敗しました。\n${error.message}`)
+        }
+      } else {
+        setIsXRewarded(true)
+        alert("Xの投稿画面を開きました！ 10ポイント獲得！")
       }
-      return
     }
-    if (!response.ok) throw new Error(result.error || "Xへの共有に失敗しました")
-    alert("Xへの投稿が完了しました！ 10ポイント獲得！")
   } catch (error) {
-    console.error("X共有エラー:", error)
-    alert(error instanceof Error ? error.message : "Xへの共有に失敗しました")
+    popup.close()
+    console.error("X共有画面の起動エラー:", error)
+    alert("Xの共有画面を開けませんでした。もう一度お試しください。")
   } finally {
     setSharing(false)
   }
@@ -1068,6 +1080,7 @@ console.log("🌱 species:", updatedInstance?.bungou_species)
     }
     setLastWritingLogId(savedWritingLog.id)
     setIsPosted(false)
+    setIsXRewarded(false)
     await fetchTodayStats()
 
 
@@ -1582,17 +1595,17 @@ src={
       </div>
     )}
 
-    {/* 共有特典の案内：ポイント付与処理は⑧で実装 */}
+    {/* アプリ内共有のポイント案内と無料のX共有 */}
     <div className="mt-4 rounded-2xl border border-amber-200 bg-white/80 px-4 py-3 text-left">
       <p className="text-center text-sm font-bold text-amber-900">
         🎁 執筆結果を共有してポイントGET！
       </p>
       <div className="mt-2 flex flex-col gap-1 text-sm font-semibold text-[#775b45]">
         <p>📢 ブンゴウクルー内で共有：+5pt</p>
-        <p>𝕏 Xで共有：+10pt</p>
+        <p>𝕏 Xで共有画面を開く：+10pt（1執筆につき1回）</p>
       </div>
       <p className="mt-2 text-xs text-[#9d7656]">
-        ※ アプリ内共有は投稿完了で5pt。X共有はX APIへの投稿成功で10pt付与します。
+        ※ アプリ内共有は投稿完了で5pt。Xは投稿画面を開いた時点で10pt付与します（投稿完了は未確認）。
       </p>
     </div>
 
@@ -1624,14 +1637,14 @@ rounded-xl
 
 </button>
 
-      {/* 外部SNSへの共有（投稿ポイント付与とは別機能） */}
+      {/* 無料のX投稿画面を開き、同じ執筆記録につき一度だけ10pt付与 */}
       <button
         type="button"
         onClick={shareWritingToX}
         disabled={sharing}
         className="rounded-xl bg-gray-900 py-3 font-bold text-white hover:bg-gray-800 disabled:opacity-50"
       >
-        {sharing ? "Xに投稿中..." : "𝕏 Xに投稿して10pt獲得"}
+        {sharing ? "Xの投稿画面を準備中..." : "𝕏 Xで共有（+10pt・無料）"}
       </button>
 
 
@@ -1645,6 +1658,7 @@ rounded-xl
           clearSavedTimer()
           setInputWords(0)
           setLastWritingLogId(null)
+          setIsXRewarded(false)
 
           setShowBadgeModal(false)
           setEarnedBadge(null)
@@ -1881,6 +1895,7 @@ rounded-lg
           clearSavedTimer()
           setInputWords(0)
           setLastWritingLogId(null)
+          setIsXRewarded(false)
 
           setBungou(null)
           setShowBadgeModal(false)

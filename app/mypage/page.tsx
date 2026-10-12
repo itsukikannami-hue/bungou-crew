@@ -738,6 +738,7 @@ const BADGE_DATA: Record<string,{
                   {premiumSubscription?.cancel_at_period_end && <p className="mt-1 text-xs text-[#bd7055]">解約予約中</p>}
                   <button type="button" onClick={() => { setActiveTab("plan"); setMenuOpen(false) }} className="mt-2 font-semibold text-[#ba7746] underline underline-offset-2">契約内容・変更を見る →</button>
                 </div>
+                <Link href="/mypage/notifications" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>🔔 通知設定</Link>
                 <Link href="/mypage/blocks" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>🚫 ブロック・ミュート管理</Link>
                 <Link href="/mypage/privacy" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>🔒 公開範囲設定</Link>
                 <Link href="/help" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>❓ 遊び方・ヘルプ</Link>
