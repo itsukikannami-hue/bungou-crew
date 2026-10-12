@@ -7,8 +7,8 @@ interface StopModalProps {
 
 export default function StopModal({ setShowStopModal, setShowModal }: StopModalProps) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40">
-      <div className="bg-white p-8 rounded-xl flex flex-col gap-4 items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-3 sm:p-4">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white p-4 sm:p-8 rounded-xl flex flex-col gap-4 items-center">
         <h2 className="text-xl font-bold">執筆を終了しますか？</h2>
         <div className="flex gap-4">
           <button

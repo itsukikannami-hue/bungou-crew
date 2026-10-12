@@ -7,12 +7,15 @@ import {
 } from "react-icons/fa"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { createPortal } from "react-dom"
 import { MessageSquareQuote } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import Link from "next/link"
 import { createNotification } from "@/lib/notification"
 import UserAvatar from "@/components/UserAvatar"
 import PlanBadge from "@/components/PlanBadge"
+import { useToast } from "@/components/ToastProvider"
+import micro from "./PostCardMotion.module.css"
 
 import type { User } from "@supabase/supabase-js"
 
@@ -71,8 +74,9 @@ export default function PostCard({
   detailMode = false,
 }: PostCardProps) {
   const router = useRouter()
+  const toast = useToast()
 
-  console.log("PostCardに渡された投稿:", post)
+  void 0
 
 
 const [myCheers,setMyCheers] = useState<string[]>([])
@@ -82,8 +86,10 @@ const [commentCount, setCommentCount] = useState(0)
 
 const [commentText, setCommentText] = useState<string>("")
 
-const [openComments,setOpenComments] =
-useState(false)
+const [openComments,setOpenComments] = useState(false)
+const commentDialogRef = useRef<HTMLDivElement>(null)
+const commentInputRef = useRef<HTMLTextAreaElement>(null)
+const commentTriggerRef = useRef<HTMLButtonElement>(null)
 
 const [openPostMenu, setOpenPostMenu] = useState<string | null>(null)
 const [showReportModal, setShowReportModal] = useState(false)
@@ -101,6 +107,10 @@ const repostMenuRef = useRef<HTMLDivElement>(null)
 const repostButtonRef = useRef<HTMLButtonElement>(null)
 const [repostError, setRepostError] = useState<string | null>(null)
 const [isReposting, setIsReposting] = useState(false)
+  const cheerBusyRef = useRef(false)
+  const commentBusyRef = useRef(false)
+  const [cheerBusy, setCheerBusy] = useState(false)
+  const [commentBusy, setCommentBusy] = useState(false)
 const [repostCount, setRepostCount] = useState(0)
 const [myRepostId, setMyRepostId] = useState<string | null>(null)
 
@@ -121,13 +131,14 @@ const submitReport = async () => {
   setIsReporting(false)
   if (error) {
     console.error("投稿通報エラー:", error)
-    setReportError("通報を送信できませんでした。時間をおいて再度お試しください。")
+    toast.error("通報を送信できませんでした。時間をおいて再度お試しください。")
     return
   }
   setShowReportModal(false)
   setReportDetails("")
   setReportReason("spam")
   setReportSuccess(true)
+  toast.success("通報を送信しました")
 }
 
 const profileUrl =
@@ -178,7 +189,10 @@ const fetchMyCheers = async()=>{
 
     const cheerPost = async () => {
 
-      if (!user) return
+      if (!user || cheerBusyRef.current) return
+      cheerBusyRef.current = true
+      setCheerBusy(true)
+      try {
     
       const alreadyCheered = myCheers.includes(post.id)
     
@@ -200,6 +214,7 @@ const fetchMyCheers = async()=>{
           })
         if (cheerError) {
           console.error("応援登録エラー:", cheerError)
+          toast.error("応援を登録できませんでした")
           return
         }
     
@@ -228,6 +243,13 @@ const fetchMyCheers = async()=>{
       }
     
       await fetchMyCheers()
+      } catch (error) {
+        console.error("応援処理エラー:", error)
+        toast.error("応援を更新できませんでした")
+      } finally {
+        cheerBusyRef.current = false
+        setCheerBusy(false)
+      }
     }
 
         const fetchComments = async()=>{
@@ -262,9 +284,12 @@ const fetchMyCheers = async()=>{
             const addComment = async()=>{
 
 
-                if(!user)return
+                if(!user || commentBusyRef.current)return
                 
                 if(!commentText.trim())return
+                commentBusyRef.current = true
+                setCommentBusy(true)
+                try {
                 
                 
                 const { data: createdComment, error }=await supabase
@@ -278,6 +303,7 @@ const fetchMyCheers = async()=>{
                 
                 if(error){
                 console.error(error)
+                toast.error("コメントを投稿できませんでした")
                 return
                 }
                 
@@ -303,7 +329,15 @@ const fetchMyCheers = async()=>{
                 setCommentText("")
                 
                 await fetchComments()
-                
+                setOpenComments(false)
+                toast.success("コメントを投稿しました")
+                } catch (error) {
+                  console.error("コメント投稿エラー:", error)
+                  toast.error("コメントを投稿できませんでした")
+                } finally {
+                  commentBusyRef.current = false
+                  setCommentBusy(false)
+                }
                 }
 
 
@@ -365,6 +399,7 @@ const fetchMyCheers = async()=>{
                     }
                     setOpenRepostMenu(false)
                     await fetchRepostState()
+                    toast.success("拡散を解除しました")
                     router.refresh()
                   } finally {
                     setIsReposting(false)
@@ -414,6 +449,7 @@ const fetchMyCheers = async()=>{
                     setOpenRepostMenu(false)
                     await fetchRepostState()
                     if (createdRepost?.id) await notifyRepost("repost", createdRepost.id)
+                    toast.success("投稿を拡散しました")
                   } finally {
                     setIsReposting(false)
                   }
@@ -442,6 +478,7 @@ const fetchMyCheers = async()=>{
                     setShowQuote(false)
                     await fetchRepostState()
                     if (createdRepost?.id) await notifyRepost("quote", createdRepost.id)
+                    toast.success("コメ付き拡散を投稿しました")
                   } finally {
                     setIsReposting(false)
                   }
@@ -456,6 +493,41 @@ const fetchMyCheers = async()=>{
                         void fetchRepostState()
                       }, [post.id, user?.id])
 
+
+    useEffect(() => {
+      if (!openComments) return
+      const previousFocus = document.activeElement as HTMLElement | null
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = "hidden"
+      const focusTimer = window.setTimeout(() => commentInputRef.current?.focus(), 0)
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape" && !commentBusyRef.current) {
+          setOpenComments(false)
+        }
+        if (event.key !== "Tab") return
+        const focusables = commentDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
+        )
+        if (!focusables?.length) return
+        const first = focusables[0]
+        const last = focusables[focusables.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+      document.addEventListener("keydown", handleKeyDown)
+      return () => {
+        window.clearTimeout(focusTimer)
+        document.body.style.overflow = previousOverflow
+        document.removeEventListener("keydown", handleKeyDown)
+        if (previousFocus?.isConnected) previousFocus.focus()
+        else commentTriggerRef.current?.focus()
+      }
+    }, [openComments])
 
     if (post.deleted && !post.repost_id) return null
 
@@ -511,7 +583,7 @@ const fetchMyCheers = async()=>{
 
           {reportSuccess && <p role="status" className="mb-3 rounded-lg bg-[#fff4e7] px-3 py-2 text-sm text-[#775b45]">通報を受け付けました。ご協力ありがとうございます。</p>}
           {showReportModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4" onClick={() => !isReporting && setShowReportModal(false)}>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/40 px-3 py-4 sm:px-4" onClick={() => !isReporting && setShowReportModal(false)}>
               <div role="dialog" aria-modal="true" aria-labelledby={`report-title-${post.id}`} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
                 <h2 id={`report-title-${post.id}`} className="text-lg font-bold">投稿を通報する</h2>
                 <p className="mt-2 text-sm text-[#927b69]">通報内容は運営が確認します。投稿者には通知されません。</p>
@@ -695,13 +767,14 @@ mt-3 rounded-xl border border-[#f1e5d9] bg-[#fffaf4] p-3
       
             <button
               onClick={cheerPost}
+              disabled={cheerBusy}
               aria-label="応援"
-              className="flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-[#927b69] hover:bg-[#fff4e7]"
+              className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-[#927b69] hover:bg-[#fff4e7] ${micro.actionButton}`}
             >
               <FaStar
                 className={
                   myCheers.includes(post.id)
-                    ? "text-[#e8a36d]"
+                    ? `text-[#e8a36d] ${micro.activeStar}`
                     : "text-[#cbb9a8]"
                 }
               />
@@ -716,20 +789,21 @@ setOpenRepostMenu(
 )
 }
 aria-label="拡散"
-className="flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-[#927b69] hover:bg-[#fff4e7]"
+className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-[#927b69] hover:bg-[#fff4e7] ${micro.actionButton}`}
 >
 
-<FaRetweet className={myRepostId ? "text-[#d78f57]" : ""} />
+<FaRetweet className={myRepostId ? `text-[#d78f57] ${micro.activeRepost}` : ""} />
 {repostCount}
 
 </button>
       
             <button
-              onClick={() => router.push(`/posts/${post.id}`)}
-              aria-label="コメント"
-              className="flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-[#927b69] hover:bg-[#fff4e7]"
+              ref={commentTriggerRef}
+              onClick={() => setOpenComments(true)}
+              aria-label="コメントを投稿"
+              className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-[#927b69] hover:bg-[#fff4e7] ${micro.actionButton} ${micro.commentButton}`}
             >
-              <FaRegComment />
+              <FaRegComment className={micro.commentIcon} />
               {commentCount}
             </button>
 
@@ -788,38 +862,83 @@ setOpenRepostMenu(false)
             <p role="alert" className="mt-2 text-sm text-red-600">{repostError}</p>
           )}
 
-          {/* コメント */}
-          {false && openComments && (
-            <div className="mt-3 border-t border-dotted border-[#e9d6c4] pt-3">
-      
-              {comments.map(comment => (
-                <div
-                  key={comment.id}
-                  className="mb-2 rounded-xl bg-[#fffaf4] p-3 text-sm"
-                >
-                  💬 {comment.content}
+          {/* Xの返信画面のように、ページ移動せずコメントを作成する。 */}
+          {openComments && typeof document !== "undefined" && createPortal(
+            <div
+              className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-6 ${micro.modalOverlay}`}
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget && !commentBusy) setOpenComments(false)
+              }}
+            >
+              <div
+                ref={commentDialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`comment-title-${post.id}`}
+                className={`flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${micro.modalPanel}`}
+              >
+                <div className="flex items-center justify-between border-b border-[#f1e5d9] px-5 py-4">
+                  <h2 id={`comment-title-${post.id}`} className="font-bold text-[#624c3d]">コメントを投稿</h2>
+                  <button
+                    type="button"
+                    onClick={() => setOpenComments(false)}
+                    disabled={commentBusy}
+                    aria-label="閉じる"
+                    className="rounded-full px-3 py-1 text-xl hover:bg-[#fff4e7] focus-visible:outline-2 focus-visible:outline-[#c18453]"
+                  >×</button>
                 </div>
-              ))}
-      
-              <div className="mt-3 flex min-w-0 gap-2">
-      
-                <input
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="コメントを書く..."
-                  className="min-w-0 flex-1 rounded-xl border border-[#ead9c8] bg-[#fffaf4] px-3 py-2 outline-none focus:border-[#d99b6b]"
-                />
-      
-                <button
-                  onClick={addComment}
-                  className="rounded-xl bg-[#e8a36d] px-4 font-bold text-white hover:bg-[#d8925c]"
-                >
-                  送信
-                </button>
-      
+                <div className="overflow-y-auto px-5 py-4">
+                  <div className="mb-4 rounded-xl border border-[#f1e5d9] bg-[#fffaf4] p-4">
+                    <p className="mb-2 text-sm font-semibold text-[#927b69]">
+                      {post.profiles?.username ?? "名無し"} さんの投稿
+                    </p>
+                    <p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-6 text-[#624c3d]">
+                      {post.content || "（本文なし）"}
+                    </p>
+                  </div>
+                  {user ? (
+                    <>
+                      <label htmlFor={`comment-input-${post.id}`} className="mb-2 block text-sm font-semibold">
+                        コメント
+                      </label>
+                      <textarea
+                        ref={commentInputRef}
+                        id={`comment-input-${post.id}`}
+                        value={commentText}
+                        onChange={(event) => setCommentText(event.target.value)}
+                        placeholder="コメントを入力..."
+                        rows={4}
+                        disabled={commentBusy}
+                        className="w-full resize-y rounded-xl border border-[#ead9c8] bg-white p-3 outline-none focus:border-[#c18453] focus:ring-2 focus:ring-[#f4dbc4]"
+                      />
+                    </>
+                  ) : (
+                    <p className="text-sm">コメントを投稿するにはログインが必要です。</p>
+                  )}
+                </div>
+                <div className="flex justify-end gap-3 border-t border-[#f1e5d9] px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setOpenComments(false)}
+                    disabled={commentBusy}
+                    className="rounded-full border border-[#ead9c8] px-5 py-2 text-sm hover:bg-[#fff4e7]"
+                  >キャンセル</button>
+                  {user ? (
+                    <button
+                      type="button"
+                      onClick={() => void addComment()}
+                      disabled={commentBusy || !commentText.trim()}
+                      className="rounded-full bg-[#c18453] px-6 py-2 text-sm font-bold text-white hover:bg-[#aa7145] disabled:cursor-not-allowed disabled:opacity-50"
+                    >{commentBusy ? "送信中..." : "コメントする"}</button>
+                  ) : (
+                    <Link href="/login" className="rounded-full bg-[#c18453] px-6 py-2 text-sm font-bold text-white">
+                      ログイン
+                    </Link>
+                  )}
+                </div>
               </div>
-      
-            </div>
+            </div>,
+            document.body
           )}
       
       

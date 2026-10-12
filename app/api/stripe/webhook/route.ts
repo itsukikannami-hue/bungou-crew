@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       webhookSecret
     )
 
-    console.log("Stripe Webhook:", event.type)
+    void 0
 
     const supabase = supabaseAdmin
 
@@ -66,10 +66,7 @@ export async function POST(request: Request) {
 
     // すでに処理済みなら終了
     if (existingEvent?.processed) {
-      console.log(
-        "Stripe Event already processed:",
-        event.id
-      )
+      void 0
 
       return NextResponse.json({
         received: true,
@@ -102,10 +99,7 @@ export async function POST(request: Request) {
             .maybeSingle()
     
         if (retryEvent?.processed) {
-          console.log(
-            "Stripe Event already processed:",
-            event.id
-          )
+          void 0
     
           return NextResponse.json({
             received: true,
@@ -341,19 +335,7 @@ if (
     )
   }
 
-  console.log(
-    "ポイント購入完了:",
-    {
-      userId,
-      purchaseId,
-      points,
-      amount:
-        session.amount_total ?? 0,
-      referenceId:
-        purchaseId,
-      pointResult,
-    }
-  )
+  void 0
 
   // ここではreturnしない
   // ↓
@@ -591,16 +573,7 @@ if (!isPointPurchase) {
         )
       }
 
-      console.log(
-        "加入特典ポイント付与完了:",
-        {
-          userId,
-          plan,
-          signupPoints,
-          referenceId: session.id,
-          pointResult,
-        }
-      )
+      void 0
     }
   }
 
@@ -737,10 +710,7 @@ if (!isPointPurchase) {
       const invoice =
         event.data.object as Stripe.Invoice
 
-      console.log(
-        "Invoice payment succeeded:",
-        invoice.id
-      )
+      void 0
 
       const customerId =
         typeof invoice.customer === "string"
@@ -860,13 +830,7 @@ const subscriptionProductName =
 const billingReason =
 invoice.billing_reason
 
-console.log(
-"Invoice billing reason:",
-{
-  invoiceId: invoice.id,
-  billingReason,
-}
-)
+void 0
 
 if (
 billingReason === "subscription_create" ||
@@ -924,10 +888,7 @@ if (habitRecoveryError) {
   )
 }
 
-console.log(
-  "習慣リカバリー月次付与:",
-  habitRecoveryResult
-)
+void 0
 
 // EXPブースト
 const {
@@ -964,18 +925,9 @@ if (expBoostError) {
   )
 }
 
-console.log(
-  "EXPブースト月次付与:",
-  expBoostResult
-)
+void 0
 } else {
-console.log(
-  "月次アイテム付与対象外のInvoice:",
-  {
-    invoiceId: invoice.id,
-    billingReason,
-  }
-)
+void 0
 }
         }
       }
@@ -992,10 +944,7 @@ console.log(
       const invoice =
         event.data.object as Stripe.Invoice
 
-      console.log(
-        "Invoice payment failed:",
-        invoice.id
-      )
+      void 0
 
       const customerId =
         typeof invoice.customer === "string"

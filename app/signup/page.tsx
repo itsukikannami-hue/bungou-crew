@@ -3,8 +3,11 @@
 import { useRef, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 export default function SignupPage() {
+  const toast = useToast()
+  const [emailSent, setEmailSent] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [agreed, setAgreed] = useState(false)
@@ -13,7 +16,7 @@ export default function SignupPage() {
   const submittingRef = useRef(false)
 
   const handleSignup = async () => {
-    if (submittingRef.current) return
+    if (submittingRef.current || emailSent) return
     setError("")
 
     if (!agreed) {
@@ -41,8 +44,8 @@ export default function SignupPage() {
         return
       }
 
-      alert("確認メールを送信しました。\n\nメール内のリンクをクリックして登録を完了してください。")
-      window.location.href = "/login"
+      setEmailSent(true)
+      toast.success("確認メールを送信しました。メール内のリンクから登録を完了してください。")
     } catch {
       setError("登録処理中にエラーが発生しました。時間をおいて再度お試しください。")
     } finally {
@@ -54,7 +57,15 @@ export default function SignupPage() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
       <h1 className="text-3xl font-bold mb-6">新規登録</h1>
+      {emailSent && (
+        <div role="status" className="mb-6 w-full max-w-sm rounded-lg border border-green-300 bg-green-50 p-5 text-center text-gray-800">
+          <p className="font-bold">確認メールを送信しました</p>
+          <p className="mt-2 text-sm">メール内のリンクをクリックして登録を完了してください。</p>
+          <Link href="/login" className="mt-4 inline-block font-bold text-blue-700 underline">ログイン画面へ</Link>
+        </div>
+      )}
 
+      {!emailSent && (<div className="flex w-full flex-col items-center">
       {error && (
         <div role="alert" className="mb-4 text-red-600 font-bold">{error}</div>
       )}
@@ -102,6 +113,8 @@ export default function SignupPage() {
       >
         {isSubmitting ? "登録中..." : "登録"}
       </button>
+
+      </div>)}
 
       <div className="mt-2">
         既に登録済みの方はこちら:{" "}

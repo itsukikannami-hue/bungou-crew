@@ -307,7 +307,7 @@ export default function AdminItemsPage() {
           return
         }
 
-        console.log("アイテム追加成功:", data)
+        void 0
 
         setSuccessMessage("アイテムを追加しました。")
 
@@ -341,7 +341,7 @@ export default function AdminItemsPage() {
         return
       }
 
-      console.log("アイテム更新成功:", data)
+      void 0
 
       setSuccessMessage("アイテムを更新しました。")
 

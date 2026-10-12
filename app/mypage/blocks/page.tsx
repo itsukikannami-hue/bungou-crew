@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import UserAvatar from "@/components/UserAvatar";
+import { useToast } from "@/components/ToastProvider";
 
 type Relation = {
   id: string;
@@ -17,6 +18,7 @@ type RelationRow = { id: string; blocked_id?: string; muted_id?: string; created
 type Tab = "blocks" | "mutes";
 
 export default function BlockMuteManagementPage() {
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>("blocks");
   const [blocks, setBlocks] = useState<Relation[]>([]);
   const [mutes, setMutes] = useState<Relation[]>([]);
@@ -91,9 +93,10 @@ export default function BlockMuteManagementPage() {
       if (result.error) throw result.error;
       if (!result.data?.length) throw new Error("対象の設定が見つかりませんでした");
       await load();
+      toast.success(`${label}を解除しました。`);
     } catch (err) {
       console.error(`${label}解除エラー:`, err);
-      setError(`${label}を解除できませんでした。再度お試しください。`);
+      toast.error(`${label}を解除できませんでした。再度お試しください。`);
     } finally {
       setBusyId(null);
     }
@@ -111,8 +114,9 @@ export default function BlockMuteManagementPage() {
             <button type="button" onClick={() => setTab("blocks")} className={`px-3 py-4 text-sm font-bold ${tab === "blocks" ? "border-b-[3px] border-[#d78f57] text-[#b9743f]" : "text-[#9b8878]"}`}>ブロック中（{blocks.length}）</button>
             <button type="button" onClick={() => setTab("mutes")} className={`px-3 py-4 text-sm font-bold ${tab === "mutes" ? "border-b-[3px] border-[#d78f57] text-[#b9743f]" : "text-[#9b8878]"}`}>ミュート中（{mutes.length}）</button>
           </div>
-          {error && <p role="alert" className="mx-4 mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {loading ? <p className="p-10 text-center text-sm">読み込み中...</p>
+          {error && <div role="alert" className="mx-4 mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700"><p>{error}</p><button type="button" onClick={() => void load()} className="mt-3 min-h-11 rounded-lg border border-red-200 bg-white px-4 py-2 font-semibold">再試行する</button></div>}
+          {loading ? <div role="status" aria-busy="true" aria-label="一覧を読み込み中" className="space-y-3 p-4"><span className="sr-only">一覧を読み込んでいます</span>{[1, 2, 3].map(n => <div key={n} aria-hidden="true" className="flex animate-pulse items-center gap-3 rounded-xl bg-white p-3 motion-reduce:animate-none"><div className="h-11 w-11 rounded-full bg-gray-200" /><div className="h-4 w-1/2 rounded bg-gray-200" /></div>)}</div>
+            : error ? null
             : loggedIn === false ? <p className="p-10 text-center text-sm"><Link href="/login" className="underline">ログイン</Link>してください。</p>
             : current.length === 0 ? <p className="p-10 text-center text-sm text-[#907b68]">{tab === "blocks" ? "ブロック" : "ミュート"}中のユーザーはいません。</p>
             : <div className="divide-y divide-[#f4e9dc]">{current.map(item => (

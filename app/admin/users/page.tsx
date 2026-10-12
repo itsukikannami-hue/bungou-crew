@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 type Profile = {
     user_id: string
@@ -12,9 +13,11 @@ type Profile = {
   }
 
 export default function AdminUsersPage() {
+  const toast = useToast()
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -33,6 +36,7 @@ export default function AdminUsersPage() {
       if (error) {
         console.error(error)
         setError("ユーザー情報の取得に失敗しました。")
+        toast.error("ユーザー情報の取得に失敗しました。")
         setLoading(false)
         return
       }
@@ -42,7 +46,7 @@ export default function AdminUsersPage() {
     }
   
     fetchUsers()
-  }, [])
+  }, [toast, retryKey])
 
   if (loading) {
     return (
@@ -51,9 +55,10 @@ export default function AdminUsersPage() {
           ユーザー管理
         </h1>
 
-        <p className="mt-6 text-gray-500">
-          読み込み中...
-        </p>
+        <div role="status" aria-busy="true" aria-label="ユーザー一覧を読み込み中" className="mt-6 space-y-3">
+          <span className="sr-only">ユーザー一覧を読み込んでいます</span>
+          {[1, 2, 3, 4].map((i) => <div key={i} aria-hidden="true" className="flex animate-pulse items-center gap-4 rounded-xl border bg-white p-4 motion-reduce:animate-none"><div className="h-10 w-10 rounded-full bg-gray-200" /><div className="h-4 w-1/2 rounded bg-gray-200" /></div>)}
+        </div>
       </div>
     )
   }
@@ -74,7 +79,8 @@ export default function AdminUsersPage() {
 
       {error && (
         <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-600">
-          {error}
+          <p role="alert">{error}</p>
+          <button type="button" onClick={() => setRetryKey((n) => n + 1)} className="mt-3 min-h-11 rounded-lg bg-white px-4 py-2 font-semibold text-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">再試行する</button>
         </div>
       )}
 
@@ -114,6 +120,7 @@ export default function AdminUsersPage() {
 
             <tbody className="divide-y divide-gray-100">
 
+              {!error && users.length === 0 && <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500">登録ユーザーが見つかりません。</td></tr>}
               {users.map((user) => (
                 <tr key={user.user_id}>
 

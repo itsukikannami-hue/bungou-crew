@@ -1,0 +1,47 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+.bubble {
+  position: absolute;
+  top: 9%;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 11px 19px;
+  border: 2px solid #f0c89f;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .97);
+  color: #775b45;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 7px 22px rgba(119, 91, 69, .16);
+  white-space: nowrap;
+  animation: pop-in 280ms cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - 8px);
+  bottom: -9px;
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
+  border-right: 2px solid #f0c89f;
+  border-bottom: 2px solid #f0c89f;
+  background: white;
+}
+.complete { border-color: #efb96b; background: #fff9ec; }
+.complete::after { border-color: #efb96b; background: #fff9ec; }
+.sparkle { margin-right: 6px; color: #e6a05e; }
+@keyframes pop-in {
+  from { opacity: 0; transform: translate(-50%, 12px) scale(.85); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble { animation: none; }
+}

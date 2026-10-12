@@ -82,17 +82,34 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<Notice[]>([]);
   const [active, setActive] = useState<(typeof tabs)[number]["id"]>("all");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!mounted) return;
-      if (!user) { router.replace("/login"); setLoading(false); return; }
-      setUserId(user.id);
-      const data = await getNotifications(user.id);
-      if (mounted) { setItems(data as Notice[]); setLoading(false); }
-    });
+    const load = async () => {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        if (!mounted) return;
+        if (!user) {
+          router.replace("/login");
+          return;
+        }
+        setUserId(user.id);
+        const data = await getNotifications(user.id);
+        if (mounted) setItems(data as Notice[]);
+      } catch (error) {
+        console.error("通知取得エラー:", error);
+        if (mounted) setLoadError("通知を取得できませんでした。通信状況を確認して再試行してください。");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void load();
     return () => { mounted = false; };
-  }, [router]);
+  }, [router, retryKey]);
   useEffect(() => {
     if (!userId) return;
     const channel = supabase.channel(`notifications-page-${userId}`)
@@ -128,8 +145,28 @@ export default function NotificationsPage() {
           className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${active === tab.id ? "bg-[#d78f57] text-white" : "border border-[#f0decc] bg-white text-[#9d785d] hover:bg-[#fff1e2]"}`}>{tab.label}</button>)}
       </div>
       <section className="space-y-3" aria-live="polite">
-        {loading ? <div className="rounded-2xl bg-white p-8 text-center text-sm">読み込み中...</div>
-          : visible.length === 0 ? <div className="rounded-2xl border border-[#f0decc] bg-white p-10 text-center"><Bell className="mx-auto mb-3 text-[#d6ac8b]" size={32} /><p className="font-semibold">このタブにはまだ通知がありません</p></div>
+        {loading ? (
+          <div role="status" aria-busy="true" aria-label="通知を読み込み中" className="space-y-3">
+            <span className="sr-only">通知を読み込んでいます</span>
+            {[1, 2, 3, 4].map(n => (
+              <div key={n} aria-hidden="true" className="flex animate-pulse items-center gap-3 rounded-2xl border border-[#f0decc] bg-white p-4 motion-reduce:animate-none">
+                <div className="h-11 w-11 shrink-0 rounded-full bg-[#f5e7d9]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-3/4 rounded bg-[#f5e7d9]" />
+                  <div className="h-3 w-2/5 rounded bg-[#f5e7d9]" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="rounded-2xl border border-[#e9cfb7] bg-white p-8 text-center">
+            <p className="font-semibold">{loadError}</p>
+            <button type="button" onClick={() => setRetryKey(n => n + 1)}
+              className="mt-5 min-h-11 rounded-full bg-[#d78f57] px-6 py-3 font-bold text-white hover:bg-[#c87e46] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+              再試行する
+            </button>
+          </div>
+        ) : visible.length === 0 ? <div className="rounded-2xl border border-[#f0decc] bg-white p-10 text-center"><Bell className="mx-auto mb-3 text-[#d6ac8b]" size={32} /><p className="font-semibold">このタブにはまだ通知がありません</p></div>
           : visible.map(g => {
             const target = destination(g.items[0]);
             return <button key={g.key} type="button" onClick={() => openNotice(g)}

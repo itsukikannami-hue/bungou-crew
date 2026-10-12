@@ -1,6 +1,7 @@
 "use client"
 
 import UserAvatar from "@/components/UserAvatar"
+import { useToast } from "@/components/ToastProvider"
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
@@ -57,6 +58,7 @@ type Post = {
 }
 
 export default function MyPage() {
+  const toast = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false)
@@ -95,7 +97,7 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
 
  const fetchPremiumStatus = async (userId: string) => {
   try {
-    console.log("PLAN STATUS CHECK:", userId)
+    void 0
 
     const {
       data: planData,
@@ -104,11 +106,7 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
       target_user_id: userId,
     })
 
-    console.log("PLAN RPC:", {
-      userId,
-      planData,
-      planError,
-    })
+    void 0
 
     if (planError) {
       console.error(
@@ -126,10 +124,7 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
 
     setUserPlan(plan)
 
-    console.log(
-      "userPlan SET:",
-      plan
-    )
+    void 0
 
     // 無料プランなら契約情報は取得しない
     if (plan === "free") {
@@ -153,10 +148,7 @@ const [premiumSubscription, setPremiumSubscription] = useState<{
       .limit(1)
       .maybeSingle()
 
-    console.log("SUBSCRIPTION RESULT:", {
-      subscriptionData,
-      subscriptionError,
-    })
+    void 0
 
     if (subscriptionError) {
       console.error(
@@ -206,7 +198,7 @@ const handleCancelSubscription = async () => {
       )
     }
 
-    alert(
+    toast.success(
       "解約を予約しました。\n契約終了日までは現在のプランを利用できます。"
     )
 
@@ -217,7 +209,7 @@ const handleCancelSubscription = async () => {
       error
     )
 
-    alert(
+    toast.error(
       error instanceof Error
         ? error.message
         : "解約予約に失敗しました"
@@ -258,7 +250,7 @@ const handleReactivateSubscription = async () => {
       )
     }
 
-    alert(
+    toast.success(
       "解約予約を取り消しました。\n現在のプランを継続できます。"
     )
 
@@ -271,7 +263,7 @@ const handleReactivateSubscription = async () => {
       error
     )
 
-    alert(
+    toast.error(
       error instanceof Error
         ? error.message
         : "解約予約の取り消しに失敗しました"
@@ -329,7 +321,7 @@ const handleChangePlan = async (
       )
     }
 
-    alert(
+    toast.success(
       `${targetPlanName}プランへ変更しました。`
     )
 
@@ -342,7 +334,7 @@ const handleChangePlan = async (
       error
     )
 
-    alert(
+    toast.error(
       error instanceof Error
         ? error.message
         : "プラン変更に失敗しました"
@@ -368,11 +360,11 @@ const handleChangePlan = async (
 
 // 空白投稿防止
 if (!content.trim()) {
-alert("投稿内容を入力してください")
+toast.error("投稿内容を入力してください")
 return
 }
 if (Array.from(content.trim()).length > 200) {
-  alert("通常の投稿は200文字以内で入力してください")
+  toast.error("通常の投稿は200文字以内で入力してください")
   return
 }
     
@@ -447,7 +439,7 @@ if (Array.from(content.trim()).length > 200) {
       plan: "premium" | "ultimate"
     ) => {
       if (!user) {
-        alert("ログインが必要です")
+        toast.error("ログインが必要です")
         return
       }
     
@@ -470,7 +462,7 @@ if (Array.from(content.trim()).length > 200) {
         const data = await response.json()
     
         if (!response.ok) {
-          alert(
+          toast.error(
             data.error ||
               "Checkoutの作成に失敗しました"
           )
@@ -478,7 +470,7 @@ if (Array.from(content.trim()).length > 200) {
         }
     
         if (!data.url) {
-          alert(
+          toast.error(
             "Stripe Checkout URLを取得できませんでした"
           )
           return
@@ -491,7 +483,7 @@ if (Array.from(content.trim()).length > 200) {
           error
         )
     
-        alert(
+        toast.error(
           "Stripe Checkoutの開始に失敗しました"
         )
       } finally {
@@ -559,11 +551,11 @@ if (Array.from(content.trim()).length > 200) {
   const { error } = await supabase
     .rpc("soft_delete_post", { target_post_id: id })
 
-    console.log(error)
+    void 0
 
   if (error) {
     console.error(error)
-    alert(error.message)
+    toast.error(error.message)
     return
   }
 
@@ -641,8 +633,8 @@ const BADGE_DATA: Record<string,{
   .from("badges")
   .select("*")
 
-  console.log("USER BADGES:", badges)
-  console.log("ALL BADGES:", allBadges)
+  void 0
+  void 0
 
   setAllBadges((allBadges || []) as Badge[])
 
@@ -715,7 +707,7 @@ const BADGE_DATA: Record<string,{
               {userPlan === "ultimate" ? "👑 Ultimate" : userPlan === "premium" ? "✨ Premium" : "🌱 無料"}
             </button>
           <div className="relative">
-            <button type="button" aria-label="メニュー" aria-expanded={menuOpen}
+            <button type="button" aria-label="メニュー" aria-expanded={menuOpen} aria-controls="mypage-navigation-menu"
               onClick={() => setMenuOpen((v) => !v)}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-[#f1dfce] bg-white text-xl text-[#9d7150] shadow-sm">☰</button>
             {menuOpen && (
@@ -727,7 +719,7 @@ const BADGE_DATA: Record<string,{
                   onClick={() => setMenuOpen(false)}
                   className="fixed inset-0 z-40 cursor-default"
                 />
-              <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-[#f1dfce] bg-white py-2 shadow-lg">
+              <div id="mypage-navigation-menu" className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-[#f1dfce] bg-white py-2 shadow-lg">
                 <button className="block w-full px-4 py-3 text-left text-sm hover:bg-[#fff5e9]" onClick={() => {
                   setMenuOpen(false); setEditName(profile?.username || ""); setEditBio(profile?.bio || "");
                   setEditAvatar(profile?.avatar_url || ""); setEditLink(profile?.website || ""); setShowEditProfile(true)
@@ -740,7 +732,7 @@ const BADGE_DATA: Record<string,{
                 </div>
                 <Link href="/mypage/notifications" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>🔔 通知設定</Link>
                 <Link href="/mypage/blocks" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>🚫 ブロック・ミュート管理</Link>
-                <Link href="/mypage/privacy" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>🔒 公開範囲設定</Link>
+
                 <Link href="/help" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>❓ 遊び方・ヘルプ</Link>
                 <div className="mx-3 my-2 border-t border-[#f1dfce]" />
                 <p className="px-4 pt-2 pb-1 text-xs font-semibold text-[#967b65]">サービスについて</p>
@@ -749,7 +741,7 @@ const BADGE_DATA: Record<string,{
                 <Link href="/contact" className="block px-4 py-3 text-sm hover:bg-[#fff5e9]" onClick={() => setMenuOpen(false)}>✉️ お問い合わせ</Link>
                 <button className="block w-full px-4 py-3 text-left text-sm hover:bg-[#fff5e9]" onClick={async () => {
                   setMenuOpen(false)
-                  if (navigator.clipboard && profile?.invite_code) { await navigator.clipboard.writeText(profile.invite_code); alert("招待コードをコピーしました") }
+                  if (navigator.clipboard && profile?.invite_code) { await navigator.clipboard.writeText(profile.invite_code); toast.success("招待コードをコピーしました") }
                 }}>🎟 招待コード</button>
                 <Link href="/mypage/account/delete" className="block px-4 py-3 text-sm text-red-600 hover:bg-red-50" onClick={() => setMenuOpen(false)}>⚠️ アカウント削除・退会</Link>
                 <button className="block w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50" onClick={async () => {
@@ -782,6 +774,7 @@ const BADGE_DATA: Record<string,{
             }} className="ml-auto rounded-full border border-[#e7b58b] px-4 py-2 font-semibold text-[#bb7a48] hover:bg-[#fff5eb]">プロフィール編集</button>
           </div>
         </section>
+
 
         <section className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-[#f0e1d2] bg-white p-4 shadow-sm">
@@ -1124,7 +1117,7 @@ const BADGE_DATA: Record<string,{
       </div>
       <FloatingPostComposer onPosted={fetchPosts} />
             {showEditProfile && (
-  <div className="fixed inset-0 bg-[#38291d]/55 flex items-center justify-center z-[200]">
+  <div className="fixed inset-0 bg-[#38291d]/55 flex items-center justify-center overflow-y-auto p-3 sm:p-4 z-[200]">
     
     <div className="max-h-[85vh] w-[min(92vw,440px)] overflow-y-auto rounded-[28px] bg-white p-6 shadow-xl">
 
@@ -1223,11 +1216,11 @@ const BADGE_DATA: Record<string,{
                 .eq("user_id", currentUser.id)
                 .select()
             
-              console.log("update data:", data)
-              console.log("update error:", error)
+              void 0
+              void 0
             
               if (error) {
-                alert("保存失敗: " + error.message)
+                toast.error("保存失敗: " + error.message)
                 return
               }
             
@@ -1237,7 +1230,7 @@ const BADGE_DATA: Record<string,{
                 .eq("user_id", currentUser.id)
                 .single()
             
-              console.log("fetch error:", fetchError)
+              void 0
             
               setProfile(updatedProfile)
               setShowEditProfile(false)

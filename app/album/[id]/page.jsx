@@ -289,7 +289,7 @@ export default function AlbumDetail({ params }) {
                 ブンゴウの成長にあわせて、物語がひらかれます。
               </p>
 
-              <div className="mt-6 grid grid-cols-4 gap-2">
+              <div className="mt-6 grid grid-cols-2 gap-2 min-[400px]:grid-cols-4">
 
                 {STAGES.map((item, index) => (
                   <div

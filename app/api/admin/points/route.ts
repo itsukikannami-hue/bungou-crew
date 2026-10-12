@@ -12,10 +12,7 @@ export async function POST(request: Request) {
       error: userError,
     } = await supabase.auth.getUser()
 
-    console.log("ADMIN POINTS AUTH CHECK", {
-        userId: user?.id ?? null,
-        userError: userError?.message ?? null,
-      })
+    void 0
 
     if (userError || !user) {
       return NextResponse.json(

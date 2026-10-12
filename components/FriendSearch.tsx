@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 interface FriendSearchProps {
   user: any
@@ -9,6 +10,7 @@ interface FriendSearchProps {
 }
 
 const FriendSearch: React.FC<FriendSearchProps> = ({ user, onCall }) => {
+  const toast = useToast()
   const [searchText, setSearchText] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
 
@@ -41,9 +43,9 @@ const FriendSearch: React.FC<FriendSearchProps> = ({ user, onCall }) => {
 
     if (error) {
       console.error(error)
-      alert("申請失敗")
+      toast.error("申請失敗")
     } else {
-      alert("フレンド申請を送信しました！")
+      toast.success("フレンド申請を送信しました！")
     }
   }
 

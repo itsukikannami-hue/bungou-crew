@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
+import FixedOverlay from "@/components/FixedOverlay"
 
 export default function StartModal({ onClose }) {
+  const toast = useToast()
 
   const [minutes, setMinutes] = useState(25)
   const [bungouId, setBungouId] = useState(null)
@@ -54,11 +57,11 @@ export default function StartModal({ onClose }) {
 
   const handleStart = () => {
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) {
-      alert("執筆時間は1〜1440分の整数で入力してください")
+      toast.error("執筆時間は1〜1440分の整数で入力してください")
       return
     }
     if (!bungouId) {
-      alert(bungouLoading ? "育成中のブンゴウを確認中です" : "育成中のブンゴウが見つかりません")
+      toast.error(bungouLoading ? "育成中のブンゴウを確認中です" : "育成中のブンゴウが見つかりません")
       return
     }
 
@@ -69,17 +72,22 @@ export default function StartModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <FixedOverlay className="fixed inset-0 z-[310] flex items-center justify-center overflow-hidden bg-black/50 p-3 sm:p-4">
 
-      <div className="bg-white p-6 rounded-xl w-80">
+      <div className="w-full max-w-xs rounded-xl bg-white p-4 shadow-xl sm:p-6">
 
-        <h2 className="text-lg font-bold mb-4">執筆スタート</h2>
+        <h2 id="writing-start-title" className="text-lg font-bold mb-4">執筆スタート</h2>
 
         {/* ⏱ タイマー */}
         <div className="mb-4">
-          <label className="text-sm">時間（分）</label>
+          <label htmlFor="writing-minutes" className="text-sm">時間（分）</label>
           <input
+            id="writing-minutes"
             type="number"
+            min={1}
+            max={1440}
+            step={1}
+            inputMode="numeric"
             value={minutes}
             onChange={(e) => setMinutes(e.target.value === "" ? "" : Number(e.target.value))}
             className="w-full border p-2 rounded"
@@ -103,8 +111,9 @@ export default function StartModal({ onClose }) {
 
         {/* ボタン */}
         <div className="flex justify-between">
-          <button onClick={onClose}>キャンセル</button>
+          <button type="button" onClick={onClose} className="rounded px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">キャンセル</button>
           <button
+            type="button"
             onClick={handleStart}
             disabled={bungouLoading || !bungouId}
             className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
@@ -114,6 +123,6 @@ export default function StartModal({ onClose }) {
         </div>
 
       </div>
-    </div>
+    </FixedOverlay>
   )
 }

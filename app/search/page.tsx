@@ -1,6 +1,7 @@
 "use client"
 
 import UserAvatar from "@/components/UserAvatar"
+import { useToast } from "@/components/ToastProvider"
 
 import { useEffect, useState, type FormEvent } from "react"
 import Link from "next/link"
@@ -13,6 +14,7 @@ type Tag = { id: string; name: string }
 type SearchTab = "users" | "posts" | "tags"
 
 export default function SearchPage() {
+  const toast = useToast()
   const [keyword, setKeyword] = useState("")
   const [searchedKeyword, setSearchedKeyword] = useState("")
   const [activeTab, setActiveTab] = useState<SearchTab>("users")
@@ -102,6 +104,7 @@ export default function SearchPage() {
       setPosts([])
       setTags([])
       setSearchError("検索結果を取得できませんでした。時間をおいて再度お試しください。")
+      toast.error("検索結果を取得できませんでした。時間をおいて再度お試しください。")
       setSearchedKeyword(query)
     } finally {
       setLoading(false)
@@ -135,7 +138,7 @@ export default function SearchPage() {
           </div>
         </form>
 
-        {searchError && <p role="alert" className="rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-700">{searchError}</p>}
+        {searchError && <div role="alert" className="rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-700"><p>{searchError}</p><button type="button" disabled={loading} onClick={() => void search()} className="mt-3 min-h-11 rounded-lg border border-red-200 bg-red-50 px-4 py-2 font-semibold disabled:opacity-50">再試行する</button></div>}
         {!searchedKeyword ? (
           <section className="overflow-hidden rounded-2xl border border-[#f0e0d0] bg-white shadow-[0_5px_20px_rgba(138,100,68,0.05)]">
             <div className="flex items-center gap-2 border-b border-[#f4e9dc] px-5 py-4">

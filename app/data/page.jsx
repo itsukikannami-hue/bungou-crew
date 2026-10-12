@@ -143,7 +143,7 @@ export default function DataPage() {
       .maybeSingle()
 
     if (error) {
-      console.log(error)
+      void 0
       return
     }
 
@@ -180,7 +180,7 @@ export default function DataPage() {
       })
 
     if (error) {
-      console.log(error)
+      void 0
       return
     }
 
@@ -212,10 +212,7 @@ export default function DataPage() {
       )
 
     if (recoveryError) {
-      console.log(
-        "recovery error:",
-        recoveryError
-      )
+      void 0
     }
 
     // =========================
@@ -609,7 +606,7 @@ export default function DataPage() {
       .limit(50)
 
     if (error) {
-      console.log(error)
+      void 0
       return
     }
 

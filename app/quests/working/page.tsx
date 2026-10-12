@@ -31,9 +31,13 @@ type QuestWithType = Quest & {
 export default function WorkingQuestsPage() {
   const [quests, setQuests] = useState<QuestWithType[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
+    let active = true
     const fetchWorkingQuests = async () => {
+      if (active) { setLoading(true); setErrorMessage("") }
       try {
         const {
           data: { user },
@@ -51,18 +55,14 @@ export default function WorkingQuestsPage() {
             .eq("status", "accepted")
 
         if (participantError) {
-          console.error(
-            "対応中クエスト参加情報取得エラー:",
-            participantError
-          )
-          return
+          throw participantError
         }
 
         const questIds =
           participants?.map((item) => item.quest_id) ?? []
 
         if (questIds.length === 0) {
-          setQuests([])
+          if (active) setQuests([])
           return
         }
 
@@ -82,26 +82,21 @@ export default function WorkingQuestsPage() {
           })
 
         if (error) {
-          console.error(
-            "対応中クエスト取得エラー:",
-            error
-          )
-          return
+          throw error
         }
 
-        setQuests((data ?? []) as QuestWithType[])
+        if (active) setQuests((data ?? []) as QuestWithType[])
       } catch (error) {
-        console.error(
-          "対応中クエスト取得エラー:",
-          error
-        )
+        console.error("対応中クエスト取得エラー:", error)
+        if (active) setErrorMessage("対応中のクエストを取得できませんでした。")
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     }
 
     fetchWorkingQuests()
-  }, [])
+    return () => { active = false }
+  }, [retryKey])
 
   const formatDeadline = (deadline: string) => {
     return new Date(deadline).toLocaleString("ja-JP", {
@@ -117,9 +112,31 @@ export default function WorkingQuestsPage() {
     return (
       <main className="min-h-screen bg-[#fffaf2] px-4 py-7 pb-28 sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <p className="text-[#927d6b]">
-            対応中のクエストを読み込んでいます...
-          </p>
+          <div role="status" aria-busy="true" aria-label="対応中のクエストを読み込み中" className="space-y-4">
+            <span className="sr-only">対応中のクエストを読み込んでいます</span>
+            {[1, 2, 3].map((n) => (
+              <div key={n} aria-hidden="true" className="animate-pulse rounded-3xl border border-[#f0e3d4] bg-white p-6">
+                <div className="h-5 w-24 rounded bg-[#f4e9dd]" />
+                <div className="mt-4 h-6 w-2/3 rounded bg-[#f4e9dd]" />
+                <div className="mt-4 h-4 w-full rounded bg-[#f4e9dd]" />
+                <div className="mt-6 h-12 rounded-2xl bg-[#f4e9dd]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (errorMessage) {
+    return (
+      <main className="min-h-screen bg-[#fffaf2] px-4 pb-28 pt-7 sm:px-6">
+        <div role="alert" className="mx-auto max-w-4xl rounded-3xl border border-[#f0e3d4] bg-white p-8 text-center">
+          <p className="font-bold text-[#654b37]">{errorMessage}</p>
+          <button type="button" onClick={() => setRetryKey((n) => n + 1)}
+            className="mt-5 min-h-11 rounded-2xl bg-[#dc985e] px-6 py-3 font-bold text-white hover:bg-[#c9844d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            再試行する
+          </button>
         </div>
       </main>
     )

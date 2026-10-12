@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 type SettingKey =
   | "cheer_in_app" | "cheer_push"
@@ -34,7 +35,7 @@ export default function NotificationPreferences({ userId }: { userId: string }) 
   const [saving, setSaving] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
   const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
+  const toast = useToast()
 
   useEffect(() => {
     let active = true
@@ -63,17 +64,16 @@ export default function NotificationPreferences({ userId }: { userId: string }) 
     if (loading || saving) return
     setSaving(true)
     setError("")
-    setMessage("")
     const next = { ...values, [key]: checked }
     const { error: saveError } = await supabase
       .from("notification_preferences")
       .upsert({ user_id: userId, ...next, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
     if (saveError) {
       console.error("通知設定の保存エラー:", saveError)
-      setError("設定を保存できませんでした。もう一度お試しください。")
+      toast.error("設定を保存できませんでした。もう一度お試しください。")
     } else {
       setValues(next)
-      setMessage("通知設定を保存しました")
+      toast.success("通知設定を保存しました")
     }
     setSaving(false)
   }
@@ -114,7 +114,6 @@ export default function NotificationPreferences({ userId }: { userId: string }) 
       {loading && <p role="status" className="mt-2 text-sm text-[#907b68]">設定を読み込み中...</p>}
       {saving && <p role="status" className="mt-2 text-sm text-[#907b68]">保存中...</p>}
       {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
-      {!error && message && <p role="status" className="mt-2 text-sm text-green-700">{message}</p>}
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 type Ad = {
   id: string
@@ -86,6 +87,7 @@ function ctr(impressions: number, clicks: number) {
 }
 
 export default function AdStatsPage() {
+  const toast = useToast()
   const [ads, setAds] = useState<Ad[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -99,6 +101,7 @@ export default function AdStatsPage() {
     if (userError || !user) {
       setAds([])
       setError("広告統計を見るにはログインが必要です。")
+      toast.error("広告統計を見るにはログインが必要です。")
       setLoading(false)
       return
     }
@@ -115,12 +118,13 @@ export default function AdStatsPage() {
     if (fetchError) {
       console.error("広告統計取得エラー:", fetchError)
       setError("広告統計を取得できませんでした。時間をおいて再度お試しください。")
+      toast.error("広告統計を取得できませんでした。時間をおいて再度お試しください。")
       setAds([])
     } else {
       setAds((data ?? []) as Ad[])
     }
     setLoading(false)
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     setNow(Date.now())
@@ -134,7 +138,39 @@ export default function AdStatsPage() {
   const totalPoints = ads.reduce((sum, ad) => sum + (ad.price ?? 0), 0)
 
   if (loading) {
-    return <main className="mx-auto max-w-5xl p-6"><p className="text-gray-500">広告統計を読み込んでいます...</p></main>
+    return (
+      <main className="mx-auto max-w-5xl p-6" role="status" aria-busy="true" aria-label="広告統計を読み込み中">
+        <span className="sr-only">広告統計を読み込んでいます</span>
+        <div className="animate-pulse space-y-7 motion-reduce:animate-none">
+          <div aria-hidden="true" className="space-y-3">
+            <div className="h-9 w-36 rounded-lg bg-gray-200" />
+            <div className="h-4 w-64 max-w-full rounded bg-gray-100" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} aria-hidden="true" className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="h-4 w-24 rounded bg-gray-200" />
+                <div className="mt-4 h-9 w-28 rounded bg-gray-200" />
+                <div className="mt-3 h-3 w-12 rounded bg-gray-100" />
+              </div>
+            ))}
+          </div>
+          <div aria-hidden="true" className="rounded-2xl border border-gray-200 bg-white p-5">
+            <div className="h-4 w-44 rounded bg-gray-200" />
+            <div className="mt-4 h-8 w-28 rounded bg-gray-200" />
+          </div>
+          {[1, 2].map((n) => (
+            <div key={n} aria-hidden="true" className="rounded-2xl border border-gray-200 bg-white p-6">
+              <div className="h-6 w-2/3 rounded bg-gray-200" />
+              <div className="mt-4 h-4 w-full rounded bg-gray-100" />
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl bg-gray-100" />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    )
   }
 
   return (

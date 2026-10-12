@@ -10,9 +10,11 @@ import { updateStatus } from "@/lib/status"
 import Link from "next/link"
 import HomeBungou from "@/components/HomeBungou"
 import TutorialModal from "@/components/tutorial/TutorialModal"
+import { useToast } from "@/components/ToastProvider"
 
 export default function Home() {
   const router = useRouter()
+  const toast = useToast()
 
   const [user, setUser] = useState<any>(null)
   const [sessions, setSessions] = useState<any[]>([])
@@ -82,9 +84,7 @@ export default function Home() {
 
     if (error) {
       console.error("チュートリアル完了状態の保存エラー:", error)
-      window.alert(
-        "チュートリアルの完了状態を保存できませんでした。もう一度お試しください。"
-      )
+      toast.error("チュートリアルの完了状態を保存できませんでした。もう一度お試しください。")
       return
     }
 

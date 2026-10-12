@@ -30,12 +30,16 @@ export default function Header() {
       </div>
 
       <Link
-        href="/"
-        className="absolute left-1/2 max-w-[48%] -translate-x-1/2 truncate text-center text-lg font-bold tracking-wide text-[#A96F46] sm:text-xl"
-        aria-label="ブンゴウクルー ホーム"
-      >
-        ブンゴウクルー
-      </Link>
+  href="/"
+  className="absolute left-1/2 flex max-w-[48%] -translate-x-1/2 items-center justify-center"
+  aria-label="ブンゴウクルー ホーム"
+>
+  <img
+    src="/logo.png"
+    alt="ブンゴウクルー"
+    className="h-9 w-auto max-w-full object-contain sm:h-11"
+  />
+</Link>
 
       <Link
         href="/notifications"

@@ -92,7 +92,7 @@ useEffect(() => {
 
       if(intervalRef.current) clearInterval(intervalRef.current)
 
-      console.log("①タイマー終了")
+      void 0
 
       setIsRunning(false)
 

@@ -111,7 +111,7 @@ function StepVisual({ type }: { type: Step["visual"] }) {
     return (
       <div className="relative flex h-[245px] items-center justify-center overflow-hidden rounded-[28px] bg-[#fff4e6] sm:h-[285px]">
         <Character src={bungouImages[1]} className="absolute -left-2 bottom-0 h-40 w-40 sm:left-3 sm:h-48 sm:w-48" />
-        <div className="ml-24 w-[210px] rounded-3xl border border-[#efd7bd] bg-white/95 p-4 shadow-lg sm:ml-28 sm:w-[245px]">
+        <div className="ml-12 w-[210px] max-w-[calc(100%-64px)] sm:ml-28 rounded-3xl border border-[#efd7bd] bg-white/95 p-4 shadow-lg sm:ml-28 sm:w-[245px]">
           <p className="text-center text-xs font-bold text-[#b77b4b]">✍️ 執筆中</p>
           <p className="my-3 text-center text-3xl font-black tracking-wider text-[#694b38]">25:14</p>
           <div className="rounded-xl bg-[#c77f43] py-2 text-center text-xs font-bold text-white">執筆を終了する</div>
@@ -157,7 +157,7 @@ function StepVisual({ type }: { type: Step["visual"] }) {
     return (
       <div className="relative flex h-[245px] items-center justify-center overflow-hidden rounded-[28px] bg-[#fff4e8] sm:h-[285px]">
         <Character src={bungouImages[3]} className="absolute -right-3 bottom-0 h-36 w-36 sm:right-2 sm:h-44 sm:w-44" />
-        <div className="mr-24 w-[225px] space-y-3 sm:mr-28 sm:w-[270px]">
+        <div className="mr-12 w-[225px] max-w-[calc(100%-64px)] sm:mr-28 space-y-3 sm:mr-28 sm:w-[270px]">
           <div className="rounded-2xl bg-white p-4 shadow-md">
             <p className="text-[10px] font-black tracking-wider text-[#c77f43]">QUEST</p>
             <p className="mt-1 text-sm font-bold text-[#694b38]">作品の感想を募集しています！</p>
@@ -176,7 +176,7 @@ function StepVisual({ type }: { type: Step["visual"] }) {
     return (
       <div className="relative flex h-[245px] items-center justify-center overflow-hidden rounded-[28px] bg-[#fff2e6] sm:h-[285px]">
         <Character src={bungouImages[2]} className="absolute -left-3 bottom-0 h-36 w-36 sm:left-2 sm:h-44 sm:w-44" />
-        <div className="ml-24 w-[225px] rounded-3xl bg-white p-4 shadow-lg sm:ml-28 sm:w-[270px]">
+        <div className="ml-12 w-[225px] max-w-[calc(100%-64px)] sm:ml-28 rounded-3xl bg-white p-4 shadow-lg sm:ml-28 sm:w-[270px]">
           <div className="flex items-center gap-2">
             <Character src={bungouImages[9]} className="h-10 w-10 rounded-full bg-[#fff3e3]" />
             <div><p className="text-xs font-bold text-[#694b38]">創作仲間</p><p className="text-[10px] text-[#a48a75]">たった今</p></div>

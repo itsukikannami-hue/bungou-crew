@@ -3,11 +3,13 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useMemo, useState } from "react"
+import { useToast } from "@/components/ToastProvider"
 
 const CONFIRM_TEXT = "退会する"
 
 export default function DeleteAccountPage() {
   const router = useRouter()
+  const toast = useToast()
   const [confirmText, setConfirmText] = useState("")
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -48,11 +50,12 @@ export default function DeleteAccountPage() {
       router.replace("/")
       router.refresh()
     } catch (err) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
           : "アカウントを削除できませんでした。時間をおいて再度お試しください。"
-      )
+      setError(message)
+      toast.error(message)
       setSubmitting(false)
     }
   }

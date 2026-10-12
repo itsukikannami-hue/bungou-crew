@@ -31,97 +31,58 @@ type QuestWithType = Quest & {
 export default function CompletedQuestsPage() {
   const [quests, setQuests] = useState<QuestWithType[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
+    let active = true
+
     const fetchCompletedQuests = async () => {
+      setLoading(true)
+      setErrorMessage("")
+
       try {
-        // ----------------------------------------
-        // 1. ログインユーザー取得
-        // ----------------------------------------
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError) throw userError
+        if (!user) throw new Error("ログインが必要です。")
 
-        if (userError) {
-          console.error("ユーザー取得エラー:", userError)
-          return
-        }
+        const { data: participantData, error: participantError } = await supabase
+          .from("quest_participants")
+          .select("quest_id")
+          .eq("user_id", user.id)
+        if (participantError) throw participantError
 
-        if (!user) {
-          console.error("ログインが必要です。")
-          return
-        }
-
-        // ----------------------------------------
-        // 2. 自分が参加したクエストIDを取得
-        // ----------------------------------------
-        const { data: participantData, error: participantError } =
-          await supabase
-            .from("quest_participants")
-            .select("quest_id")
-            .eq("user_id", user.id)
-
-        if (participantError) {
-          console.error(
-            "参加クエスト取得エラー:",
-            participantError
-          )
-          return
-        }
-
-        const participantQuestIds =
-          participantData?.map((item) => item.quest_id) ?? []
-
-        // ----------------------------------------
-        // 3. 自分が依頼者 or 参加者の完了クエストを取得
-        // ----------------------------------------
+        const participantQuestIds = participantData?.map((item) => item.quest_id) ?? []
         let query = supabase
           .from("quests")
-          .select(`
-            *,
-            quest_type:quest_types (
-              id,
-              name
-            )
-          `)
+          .select(`*, quest_type:quest_types (id, name)`)
           .eq("status", "completed")
 
         if (participantQuestIds.length > 0) {
-          const ids = participantQuestIds.join(",")
-
-          query = query.or(
-            `requester_id.eq.${user.id},id.in.(${ids})`
-          )
+          query = query.or(`requester_id.eq.${user.id},id.in.(${participantQuestIds.join(",")})`)
         } else {
           query = query.eq("requester_id", user.id)
         }
 
-        const { data, error } = await query.order("updated_at", {
-          ascending: false,
-        })
-
-        if (error) {
-          console.error(
-            "完了クエスト取得エラー:",
-            error
-          )
-          return
-        }
-
-        setQuests((data ?? []) as QuestWithType[])
+        const { data, error } = await query.order("updated_at", { ascending: false })
+        if (error) throw error
+        if (active) setQuests((data ?? []) as QuestWithType[])
       } catch (error) {
-        console.error(
-          "完了クエスト取得エラー:",
-          error
-        )
+        console.error("完了クエスト取得エラー:", error)
+        if (active) {
+          setQuests([])
+          setErrorMessage(error instanceof Error && error.message === "ログインが必要です。"
+            ? error.message
+            : "完了クエストを取得できませんでした。")
+        }
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     }
 
-    fetchCompletedQuests()
-  }, [])
+    void fetchCompletedQuests()
+    return () => { active = false }
+  }, [retryKey])
 
   const formatDeadline = (deadline: string) => {
     return new Date(deadline).toLocaleString("ja-JP", {
@@ -179,7 +140,15 @@ export default function CompletedQuestsPage() {
           ))}
         </nav>
 
-        {quests.length === 0 ? (
+        {errorMessage ? (
+          <div role="alert" className="rounded-3xl border border-[#eedfcd] bg-white p-8 text-center">
+            <p className="font-bold text-[#654b37]">{errorMessage}</p>
+            <button type="button" onClick={() => setRetryKey((n) => n + 1)}
+              className="mt-5 min-h-11 rounded-full bg-[#dc985e] px-6 py-3 font-bold text-white hover:bg-[#c9844d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+              再試行する
+            </button>
+          </div>
+        ) : quests.length === 0 ? (
           <div className="rounded-3xl border border-[#f0e3d4] bg-white p-8 text-center shadow-[0_4px_18px_rgba(133,94,56,0.06)]">
             <p className="text-[#927d6b]">
               完了したクエストはありません。

@@ -39,3 +39,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Next.js generated files
+.next/
+node_modules/
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+
+# Archives and temporary files
+*.zip
+
+# Playwright test results
+test-results/
+playwright-report/
+playwright-results.json
+
+# Sentry wizard installation logs
+sentry-wizard-installation-error-*.log

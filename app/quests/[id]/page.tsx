@@ -1,8 +1,9 @@
 "use client"
 
 import UserAvatar from "@/components/UserAvatar"
+import { useToast } from "@/components/ToastProvider"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
@@ -33,6 +34,8 @@ type QuestDetail = Quest & {
 }
 
 export default function QuestDetailPage() {
+  const actionLocksRef = useRef(new Set<string>())
+  const toast = useToast()
   const params = useParams()
   const questId = params.id as string
 
@@ -532,9 +535,9 @@ useEffect(() => {
   fetchApplicants()
 }, [questId, userId, quest])
 
-  const handleApply = async () => {
+  const handleApplyImpl = async () => {
     if (!userId) {
-      alert("ログインが必要です。")
+      toast.error("ログインが必要です。")
       return
     }
   
@@ -543,23 +546,23 @@ useEffect(() => {
     if (applying) return
   
     if (userId === quest.requester_id) {
-      alert("自分が作成したクエストには応募できません。")
+      toast.error("自分が作成したクエストには応募できません。")
       return
     }
   
     if (quest.status !== "open") {
-      alert("このクエストは現在応募を受け付けていません。")
+      toast.error("このクエストは現在応募を受け付けていません。")
       return
     }
   
     if (new Date(quest.deadline) <= new Date()) {
-      alert("このクエストは応募期限を過ぎています。")
+      toast.error("このクエストは応募期限を過ぎています。")
       return
     }
 
   
     if (applicationMessage.length > 2000) {
-      alert("応募メッセージは2000文字以内にしてください。")
+      toast.error("応募メッセージは2000文字以内にしてください。")
       return
     }
   
@@ -576,12 +579,12 @@ useEffect(() => {
   
       if (error) {
         console.error("クエスト応募エラー:", error)
-        alert(error.message)
+        toast.error(error.message)
         return
       }
   
       if (!data?.success) {
-        alert("応募に失敗しました。")
+        toast.error("応募に失敗しました。")
         return
       }
   
@@ -598,16 +601,16 @@ useEffect(() => {
         `/quests/${quest.id}`
       )
   
-      alert("クエストに応募しました。")
+      toast.success("クエストに応募しました。")
     } catch (error) {
       console.error("クエスト応募エラー:", error)
-      alert("応募中にエラーが発生しました。")
+      toast.error("応募中にエラーが発生しました。")
     } finally {
       setApplying(false)
     }
   }
 
-  const handleAcceptApplicant = async (
+  const handleAcceptApplicantImpl = async (
     applicationId: string,
     applicantId: string,
     applicantName: string
@@ -617,7 +620,7 @@ useEffect(() => {
     }
   
     if (userId !== quest.requester_id) {
-      alert("この操作を行う権限がありません。")
+      toast.error("この操作を行う権限がありません。")
       return
     }
   
@@ -645,11 +648,11 @@ useEffect(() => {
   
       if (error) {
         console.error("受注者決定エラー:", error)
-        alert(error.message || "受注者の決定に失敗しました。")
+        toast.error(error.message || "受注者の決定に失敗しました。")
         return
       }
   
-      console.log("受注者決定結果:", data)
+      void 0
 
       await createNotification(
         applicantId,
@@ -660,7 +663,7 @@ useEffect(() => {
         `/quests/${quest.id}`
       )
   
-      alert(`${applicantName}さんに依頼しました。`)
+      toast.success(`${applicantName}さんに依頼しました。`)
   
       // クエスト情報を再取得
       const { data: updatedQuest, error: questError } = await supabase
@@ -761,27 +764,27 @@ if (applicantsError) {
 
     } catch (error) {
       console.error("受注者決定エラー:", error)
-      alert("受注者の決定に失敗しました。")
+      toast.error("受注者の決定に失敗しました。")
     } finally {
       setAcceptingApplicantId(null)
     }
   }
 
-  const handleSubmitWork = async () => {
+  const handleSubmitWorkImpl = async () => {
     if (!userId) {
-      alert("ログインが必要です。")
+      toast.error("ログインが必要です。")
       return
     }
   
     if (!quest) return
   
     if (!isParticipant) {
-      alert("このクエストの受注者ではありません。")
+      toast.error("このクエストの受注者ではありません。")
       return
     }
   
     if (!participantId) {
-      alert("受注者情報を取得できませんでした。")
+      toast.error("受注者情報を取得できませんでした。")
       return
     }
   
@@ -793,7 +796,7 @@ if (applicantsError) {
       submission &&
       submission.status !== "revision_requested"
     ) {
-      alert(
+      toast.error(
         "すでに成果物を提出済みです。修正依頼がある場合のみ再提出できます。"
       )
       return
@@ -802,12 +805,12 @@ if (applicantsError) {
     const content = submissionContent.trim()
   
     if (!content) {
-      alert("成果物を入力してください。")
+      toast.error("成果物を入力してください。")
       return
     }
   
     if (content.length > 10000) {
-      alert("成果物は10000文字以内にしてください。")
+      toast.error("成果物は10000文字以内にしてください。")
       return
     }
   
@@ -886,12 +889,12 @@ if (applicantsError) {
   
       if (error) {
         console.error("成果物提出エラー:", error)
-        alert(error.message)
+        toast.error(error.message)
         return
       }
   
       if (!data) {
-        alert("成果物の保存結果を取得できませんでした。")
+        toast.error("成果物の保存結果を取得できませんでした。")
         return
       }
 
@@ -910,34 +913,34 @@ if (applicantsError) {
       setSubmissionContent(data.content)
       setSubmissionStatus(data.status)
   
-      alert("成果物を提出しました。")
+      toast.success("成果物を提出しました。")
     } catch (error) {
       console.error("成果物提出エラー:", error)
-      alert("成果物の提出に失敗しました。")
+      toast.error("成果物の提出に失敗しました。")
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleRequestRevision = async () => {
+  const handleRequestRevisionImpl = async () => {
     if (!userId || !quest || !submission) {
       return
     }
   
     if (userId !== quest.requester_id) {
-      alert("この操作を行う権限がありません。")
+      toast.error("この操作を行う権限がありません。")
       return
     }
   
     const comment = revisionComment.trim()
   
     if (!comment) {
-      alert("修正内容を入力してください。")
+      toast.error("修正内容を入力してください。")
       return
     }
   
     if (comment.length > 2000) {
-      alert("修正内容は2000文字以内にしてください。")
+      toast.error("修正内容は2000文字以内にしてください。")
       return
     }
   
@@ -971,7 +974,7 @@ if (applicantsError) {
   
       if (error) {
         console.error("修正依頼エラー:", error)
-        alert(error.message)
+        toast.error(error.message)
         return
       }
   
@@ -1001,28 +1004,28 @@ if (applicantsError) {
   
       setRevisionComment("")
   
-      alert("修正を依頼しました。")
+      toast.success("修正を依頼しました。")
     } catch (error) {
       console.error("修正依頼エラー:", error)
-      alert("修正依頼に失敗しました。")
+      toast.error("修正依頼に失敗しました。")
     } finally {
       setRequestingRevision(false)
     }
   }
 
 
-  const handleApproveSubmission = async () => {
+  const handleApproveSubmissionImpl = async () => {
     if (!userId || !quest || !submission) {
       return
     }
   
     if (userId !== quest.requester_id) {
-      alert("この操作を行う権限がありません。")
+      toast.error("この操作を行う権限がありません。")
       return
     }
   
     if (submission.status !== "submitted") {
-      alert("承認できる成果物がありません。")
+      toast.error("承認できる成果物がありません。")
       return
     }
   
@@ -1068,12 +1071,12 @@ if (applicantsError) {
   
       if (error) {
         console.error("成果物承認エラー:", error)
-        alert(error.message || "成果物の承認に失敗しました。")
+        toast.error(error.message || "成果物の承認に失敗しました。")
         return
       }
   
       if (!data) {
-        alert("成果物の承認結果を取得できませんでした。")
+        toast.error("成果物の承認結果を取得できませんでした。")
         return
       }
   
@@ -1107,28 +1110,28 @@ if (applicantsError) {
         )
       }
   
-      alert("成果物を承認しました。")
+      toast.success("成果物を承認しました。")
     } catch (error) {
       console.error("成果物承認エラー:", error)
-      alert("成果物の承認に失敗しました。")
+      toast.error("成果物の承認に失敗しました。")
     } finally {
       setApprovingSubmission(false)
     }
   }
   
-  const handlePublishFeedback = async () => {
+  const handlePublishFeedbackImpl = async () => {
     if (!userId || !quest || !submission) {
       return
     }
   
     // 感想を公開できるのは依頼者
     if (userId !== quest.requester_id) {
-      alert("感想を公開できるのは依頼者本人のみです。")
+      toast.error("感想を公開できるのは依頼者本人のみです。")
       return
     }
   
     if (submission.status !== "approved") {
-      alert("承認済みの感想のみ公開できます。")
+      toast.error("承認済みの感想のみ公開できます。")
       return
     }
   
@@ -1136,7 +1139,7 @@ if (applicantsError) {
       quest.quest_type?.name !== "感想依頼" &&
       quest.quest_type?.name !== "読後レビュー依頼"
     ) {
-      alert("このクエストは感想公開の対象ではありません。")
+      toast.error("このクエストは感想公開の対象ではありません。")
       return
     }
   
@@ -1169,12 +1172,12 @@ if (applicantsError) {
   
       if (error) {
         console.error("感想公開エラー:", error)
-        alert(error.message || "感想の公開に失敗しました。")
+        toast.error(error.message || "感想の公開に失敗しました。")
         return
       }
   
       if (!data?.success) {
-        alert(
+        toast.error(
           data?.message ||
           "感想の公開に失敗しました。"
         )
@@ -1194,19 +1197,19 @@ if (applicantsError) {
           : current
       )
   
-      alert("感想をタイムラインに公開しました。")
+      toast.success("感想をタイムラインに公開しました。")
   
     } catch (error) {
       console.error("感想公開エラー:", error)
-      alert("感想の公開に失敗しました。")
+      toast.error("感想の公開に失敗しました。")
     } finally {
       setPublishingFeedback(false)
     }
   }
 
-  const handleCancelQuest = async () => {
+  const handleCancelQuestImpl = async () => {
     if (!userId) {
-      alert("ログインが必要です。")
+      toast.error("ログインが必要です。")
       return
     }
   
@@ -1215,12 +1218,12 @@ if (applicantsError) {
     }
   
     if (userId !== quest.requester_id) {
-      alert("この操作を行う権限がありません。")
+      toast.error("この操作を行う権限がありません。")
       return
     }
   
     if (quest.status !== "open") {
-      alert("このクエストはキャンセルできません。")
+      toast.error("このクエストはキャンセルできません。")
       return
     }
   
@@ -1242,21 +1245,21 @@ if (applicantsError) {
   
       if (error) {
         console.error("クエストキャンセルエラー:", error)
-        alert(error.message || "クエストのキャンセルに失敗しました。")
+        toast.error(error.message || "クエストのキャンセルに失敗しました。")
         return
       }
   
-      console.log("クエストキャンセル結果:", data)
+      void 0
   
       if (!data?.success) {
-        alert(
+        toast.error(
           data?.message ||
           "クエストのキャンセルに失敗しました。"
         )
         return
       }
   
-      alert("クエストをキャンセルしました。")
+      toast.success("クエストをキャンセルしました。")
   
       // クエスト情報を再取得
       const {
@@ -1290,22 +1293,22 @@ if (applicantsError) {
         error
       )
   
-      alert("クエストのキャンセルに失敗しました。")
+      toast.error("クエストのキャンセルに失敗しました。")
     }
   }
 
-  const handleConfirmReward = async () => {
+  const handleConfirmRewardImpl = async () => {
     if (!userId || !quest || !submission) {
       return
     }
   
     if (userId !== quest.requester_id) {
-      alert("この操作を行う権限がありません。")
+      toast.error("この操作を行う権限がありません。")
       return
     }
   
     if (submission.status !== "approved") {
-      alert("成果物が承認されていません。")
+      toast.error("成果物が承認されていません。")
       return
     }
   
@@ -1334,12 +1337,12 @@ if (applicantsError) {
   
       if (error) {
         console.error("報酬確定エラー:", error)
-        alert(error.message || "報酬の確定に失敗しました。")
+        toast.error(error.message || "報酬の確定に失敗しました。")
         return
       }
   
       if (!data?.success) {
-        alert("報酬の確定に失敗しました。")
+        toast.error("報酬の確定に失敗しました。")
         return
       }
   
@@ -1382,20 +1385,20 @@ if (applicantsError) {
         )
       }
   
-      alert(
+      toast.success(
         `報酬 ${quest.reward_per_person.toLocaleString()} pt を確定しました。`
       )
     } catch (error) {
       console.error("報酬確定エラー:", error)
-      alert("報酬の確定に失敗しました。")
+      toast.error("報酬の確定に失敗しました。")
     } finally {
       setConfirmingReward(false)
     }
   }
 
-  const handleSubmitReport = async () => {
+  const handleSubmitReportImpl = async () => {
     if (!userId) {
-      alert("ログインが必要です。")
+      toast.error("ログインが必要です。")
       return
     }
   
@@ -1408,20 +1411,20 @@ if (applicantsError) {
     }
   
     if (reported) {
-      alert("このクエストはすでに通報済みです。")
+      toast.error("このクエストはすでに通報済みです。")
       setReportOpen(false)
       return
     }
   
     if (!reportReason) {
-      alert("通報理由を選択してください。")
+      toast.error("通報理由を選択してください。")
       return
     }
   
     const description = reportDescription.trim()
   
     if (description.length > 2000) {
-      alert("詳細説明は2000文字以内にしてください。")
+      toast.error("詳細説明は2000文字以内にしてください。")
       return
     }
   
@@ -1441,7 +1444,7 @@ if (applicantsError) {
   
       if (error) {
         console.error("クエスト通報エラー:", error)
-        alert(error.message || "通報に失敗しました。")
+        toast.error(error.message || "通報に失敗しました。")
         return
       }
   
@@ -1450,18 +1453,18 @@ if (applicantsError) {
       setReportReason("")
       setReportDescription("")
   
-      alert("通報を受け付けました。")
+      toast.success("通報を受け付けました。")
     } catch (error) {
       console.error("クエスト通報エラー:", error)
-      alert("通報に失敗しました。")
+      toast.error("通報に失敗しました。")
     } finally {
       setReporting(false)
     }
   }
 
-  const handleSendMessage = async () => {
+  const handleSendMessageImpl = async () => {
     if (!userId) {
-      alert("ログインが必要です。")
+      toast.error("ログインが必要です。")
       return
     }
 
@@ -1472,12 +1475,12 @@ if (applicantsError) {
     const text = messageText.trim()
 
     if (!text) {
-      alert("メッセージを入力してください。")
+      toast.error("メッセージを入力してください。")
       return
     }
 
     if (text.length > 2000) {
-      alert("メッセージは2000文字以内にしてください。")
+      toast.error("メッセージは2000文字以内にしてください。")
       return
     }
 
@@ -1485,7 +1488,7 @@ if (applicantsError) {
       userId === quest.requester_id || isParticipant
 
     if (!canSend) {
-      alert("このクエストのメッセージを送信する権限がありません。")
+      toast.error("このクエストのメッセージを送信する権限がありません。")
       return
     }
 
@@ -1510,7 +1513,7 @@ if (applicantsError) {
 
       if (error) {
         console.error("メッセージ送信エラー:", error)
-        alert(error.message)
+        toast.error(error.message)
         return
       }
 
@@ -1572,7 +1575,7 @@ if (applicantsError) {
 
     } catch (error) {
       console.error("メッセージ送信エラー:", error)
-      alert("メッセージの送信に失敗しました。")
+      toast.error("メッセージの送信に失敗しました。")
     } finally {
       setSendingMessage(false)
     }
@@ -1591,6 +1594,30 @@ if (applicantsError) {
 
 
 
+
+  // ⑫ 二重送信防止: 操作ごとに同期ロックを保持し、完了・失敗後に解除する。
+  // React state更新前の連続クリックも遮断する。
+  const runOnce = async <T,>(key: string, task: () => Promise<T>): Promise<T | undefined> => {
+    if (actionLocksRef.current.has(key)) return undefined
+    actionLocksRef.current.add(key)
+    try {
+      return await task()
+    } finally {
+      actionLocksRef.current.delete(key)
+    }
+  }
+
+  const handleApply = () => runOnce("handleApply", () => handleApplyImpl())
+  const handleAcceptApplicant = (...args: Parameters<typeof handleAcceptApplicantImpl>) =>
+    runOnce(`handleAcceptApplicant:${args[0]}`, () => handleAcceptApplicantImpl(...args))
+  const handleSubmitWork = () => runOnce("handleSubmitWork", () => handleSubmitWorkImpl())
+  const handleRequestRevision = () => runOnce("handleRequestRevision", () => handleRequestRevisionImpl())
+  const handleApproveSubmission = () => runOnce("handleApproveSubmission", () => handleApproveSubmissionImpl())
+  const handlePublishFeedback = () => runOnce("handlePublishFeedback", () => handlePublishFeedbackImpl())
+  const handleCancelQuest = () => runOnce("handleCancelQuest", () => handleCancelQuestImpl())
+  const handleConfirmReward = () => runOnce("handleConfirmReward", () => handleConfirmRewardImpl())
+  const handleSubmitReport = () => runOnce("handleSubmitReport", () => handleSubmitReportImpl())
+  const handleSendMessage = () => runOnce("handleSendMessage", () => handleSendMessageImpl())
 
   if (loading) {
     return (
@@ -2644,7 +2671,7 @@ if (applicantsError) {
 
 {/* 通報モーダル */}
 {reportOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4">
 
     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
 

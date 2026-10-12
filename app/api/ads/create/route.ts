@@ -55,6 +55,11 @@ export async function POST(request: Request) {
 
     const body = await request.json()
 
+    const requestId = body.requestId
+    if (typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      return NextResponse.json({ error: "有効なリクエストIDが必要です。" }, { status: 400 })
+    }
+
     const message =
       typeof body.message === "string"
         ? body.message.trim()
@@ -136,10 +141,11 @@ export async function POST(request: Request) {
     const {
       data,
       error,
-    } = await supabase.rpc("create_ad", {
+    } = await supabase.rpc("create_ad_once", {
       p_message: message,
       p_link_url: linkUrl,
       p_duration_days: durationDays,
+      p_request_id: requestId,
     })
 
     if (error) {

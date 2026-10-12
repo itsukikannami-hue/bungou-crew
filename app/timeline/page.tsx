@@ -7,6 +7,7 @@ import { hydrateReposts } from "@/lib/hydrateReposts"
 import FloatingPostComposer from "@/components/FloatingPostComposer"
 import type { User } from "@supabase/supabase-js"
 import AdTimelineCard from "@/components/AdTimelineCard"
+import { useToast } from "@/components/ToastProvider"
 
 type Post = {
   id: string
@@ -33,6 +34,7 @@ type UserPlan = {
 }
 
 export default function TimelinePage() {
+  const toast = useToast()
   const [mode, setMode] = useState("recommend")
   const [posts, setPosts] = useState<Post[]>([])
   const [user, setUser] = useState<User | null>(null)
@@ -315,15 +317,9 @@ export default function TimelinePage() {
         return
       }
 
-      console.log(
-        "タイムライン取得結果:",
-        data
-      )
+      void 0
 
-      console.log(
-        "タイムライン取得件数:",
-        data?.length
-      )
+      void 0
 
       await publish((data ?? []) as Post[], true)
 
@@ -437,11 +433,12 @@ export default function TimelinePage() {
 
     if (error) {
       console.error(error)
-      alert(error.message)
+      toast.error(`投稿を削除できませんでした: ${error.message}`)
       return
     }
 
     await fetchPosts()
+    toast.success("投稿を削除しました")
   }
 
   return (

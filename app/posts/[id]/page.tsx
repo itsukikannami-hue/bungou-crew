@@ -9,22 +9,13 @@ import { createNotification } from "@/lib/notification";
 import { hydrateReposts } from "@/lib/hydrateReposts";
 import PostCard from "@/components/PostCard";
 import UserAvatar from "@/components/UserAvatar";
-import { Flag, MoreHorizontal, X } from "lucide-react";
+import { useToast } from "@/components/ToastProvider";
 
 type Post = React.ComponentProps<typeof PostCard>["post"];
-const REPORT_REASONS = [
-  { value: "spam", label: "スパム・宣伝" },
-  { value: "harassment", label: "嫌がらせ・誹謗中傷" },
-  { value: "hate", label: "差別・ヘイト" },
-  { value: "sexual", label: "性的な内容" },
-  { value: "violence", label: "暴力的な内容" },
-  { value: "copyright", label: "著作権侵害" },
-  { value: "other", label: "その他" },
-] as const;
-
 type Comment = { id: string; user_id: string; content: string; created_at: string; profiles?: { username: string | null; avatar_url: string | null } | null };
 
 export default function PostDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Post | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -33,14 +24,9 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
+  const [canRetry, setCanRetry] = useState(false);
   const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
-  const [openCommentMenu, setOpenCommentMenu] = useState<string | null>(null);
-  const [reportComment, setReportComment] = useState<Comment | null>(null);
-  const [reportReason, setReportReason] = useState("");
-  const [reportDetails, setReportDetails] = useState("");
-  const [reportBusy, setReportBusy] = useState(false);
-  const [reportError, setReportError] = useState("");
-  const [reportMessage, setReportMessage] = useState("");
 
   async function loadComments(hiddenIds: string[] = hiddenUserIds) {
     const { data, error: commentsError } = await supabase.from("post_comments")
@@ -65,11 +51,13 @@ export default function PostDetailPage() {
       setPost(null);
       setComments([]);
       setError("");
+      setCanRetry(false);
       setHiddenUserIds([]);
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (!active) return;
       if (authError) {
-        setError("ログイン状態を確認できませんでした。再読み込みしてください。");
+        setError("ログイン状態を確認できませんでした。再試行してください。");
+        setCanRetry(true);
         setLoading(false);
         return;
       }
@@ -83,7 +71,8 @@ export default function PostDetailPage() {
         if (!active) return;
         if (hiddenError || !Array.isArray(hiddenData)) {
           console.error("非表示ユーザーの取得エラー:", hiddenError);
-          setError("ブロック・ミュート設定を確認できませんでした。再読み込みしてください。");
+          setError("ブロック・ミュート設定を確認できませんでした。再試行してください。");
+          setCanRetry(true);
           setLoading(false);
           return;
         }
@@ -98,6 +87,7 @@ export default function PostDetailPage() {
       if (!active) return;
       if (fetchError || !data) {
         setError(fetchError ? "ポストを読み込めませんでした。" : "このポストは存在しないか、削除されています。");
+        setCanRetry(Boolean(fetchError));
         setLoading(false);
         return;
       }
@@ -118,6 +108,7 @@ export default function PostDetailPage() {
         if (!active) return;
         if (originalError || !original) {
           setError("拡散元の投稿を確認できませんでした。");
+          setCanRetry(Boolean(originalError));
           setLoading(false);
           return;
         }
@@ -137,53 +128,12 @@ export default function PostDetailPage() {
         if (!active) return;
         setPost(null);
         setError("ポストを読み込めませんでした。");
+        setCanRetry(true);
       }
       if (active) setLoading(false);
     })();
     return () => { active = false; };
-  }, [id]);
-
-  function openReport(comment: Comment) {
-    if (!user || user.id === comment.user_id) return;
-    setOpenCommentMenu(null);
-    setReportReason("");
-    setReportDetails("");
-    setReportError("");
-    setReportComment(comment);
-  }
-
-  function closeReport() {
-    if (reportBusy) return;
-    setReportComment(null);
-    setReportError("");
-  }
-
-  async function submitCommentReport() {
-    if (!user || !reportComment || reportBusy) return;
-    if (!REPORT_REASONS.some(reason => reason.value === reportReason)) {
-      setReportError("通報理由を選択してください。");
-      return;
-    }
-    if (Array.from(reportDetails).length > 1000) {
-      setReportError("詳細は1,000文字以内で入力してください。");
-      return;
-    }
-    setReportBusy(true);
-    setReportError("");
-    const { error: submitError } = await supabase.rpc("submit_comment_report", {
-      p_comment_id: reportComment.id,
-      p_reason: reportReason,
-      p_details: reportDetails.trim() || null,
-    });
-    setReportBusy(false);
-    if (submitError) {
-      console.error("コメント通報エラー:", submitError);
-      setReportError("通報を送信できませんでした。時間をおいて再度お試しください。");
-      return;
-    }
-    setReportComment(null);
-    setReportMessage("通報を受け付けました。ご協力ありがとうございます。");
-  }
+  }, [id, retryKey]);
 
   async function sendComment() {
     if (!user || !post || !text.trim() || sending) return;
@@ -192,13 +142,13 @@ export default function PostDetailPage() {
     const { error: insertError } = await supabase.from("post_comments").insert({
       post_id: post.id, user_id: user.id, content: text.trim(),
     });
-    if (insertError) { setError("コメントを送信できませんでした。"); console.error(insertError); setSending(false); return; }
+    if (insertError) { setError("コメントを送信できませんでした。"); toast.error("コメントを送信できませんでした。"); console.error(insertError); setSending(false); return; }
     if (post.user_id !== user.id) {
       const { data: profile } = await supabase.from("profiles").select("username").eq("user_id", user.id).maybeSingle();
       const notice = await createNotification(post.user_id, "comment", `${profile?.username ?? "誰か"}さんがあなたの投稿にコメントしました`, user.id, post.id, `/posts/${post.id}`);
       if (!notice.success) console.error("コメント通知エラー", notice.error);
     }
-    setText(""); await loadComments(hiddenUserIds); setSending(false);
+    setText(""); toast.success("コメントを投稿しました。"); await loadComments(hiddenUserIds); setSending(false);
   }
 
   return (
@@ -206,8 +156,17 @@ export default function PostDetailPage() {
       <div className="mx-auto max-w-2xl">
         <Link href="/timeline" className="mb-5 inline-block text-sm font-semibold text-[#bb8055] hover:underline">← タイムラインへ</Link>
         <h1 className="mb-5 text-xl font-bold">ポスト</h1>
-        {loading ? <p className="rounded-2xl bg-white p-8 text-center">読み込み中...</p>
-          : error && !post ? <p className="rounded-2xl bg-white p-8 text-center">{error}</p>
+        {loading ? <div role="status" aria-busy="true" aria-label="投稿を読み込み中" className="animate-pulse motion-reduce:animate-none rounded-2xl bg-white p-6 space-y-4">
+              <span className="sr-only">投稿を読み込んでいます</span>
+              <div className="h-11 w-11 rounded-full bg-[#f0e5da]" />
+              <div className="h-4 w-2/5 rounded bg-[#f0e5da]" />
+              <div className="h-4 w-full rounded bg-[#f0e5da]" />
+              <div className="h-4 w-3/4 rounded bg-[#f0e5da]" />
+            </div>
+          : error && !post ? <div role="alert" className="rounded-2xl bg-white p-8 text-center">
+              <p>{error}</p>
+              {canRetry && <button type="button" onClick={() => setRetryKey(n => n + 1)} className="mt-4 min-h-11 rounded-xl bg-[#d78f57] px-5 py-3 font-semibold text-white">再試行する</button>}
+            </div>
           : post ? <>
               <PostCard post={post} user={user} detailMode />
               <section className="mt-5 rounded-2xl border border-[#f1e5d9] bg-white p-4 sm:p-5">

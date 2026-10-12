@@ -90,7 +90,7 @@ export default function FloatingPostComposer({ onPosted }: { onPosted?: () => vo
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#39291f]/45 px-4 py-8"
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[#39291f]/45 px-3 py-4 sm:px-4 sm:py-8"
           onMouseDown={event => { if (event.target === event.currentTarget && !sending) setOpen(false) }}
         >
           <section role="dialog" aria-modal="true" aria-labelledby="compose-title" className="w-full max-w-lg rounded-3xl border border-[#efd9c3] bg-[#fffaf3] p-5 shadow-xl sm:p-6">

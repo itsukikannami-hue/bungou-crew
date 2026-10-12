@@ -43,7 +43,7 @@ export default function FriendList({
        },
        payload=>{
          const status = payload.new
-         console.log("状態更新",status)
+         void 0
        }
      )
      .subscribe()

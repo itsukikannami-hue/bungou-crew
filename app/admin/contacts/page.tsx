@@ -45,8 +45,8 @@ export default function AdminContactsPage() {
         <button type="button" onClick={() => void load()} disabled={loading} style={{ border: "1px solid #aaa", padding: "8px 12px", borderRadius: 6 }}>再読み込み</button>
         <span>全 {total} 件</span>
       </div>
-      {error && <p role="alert" style={{ color: "#c33" }}>{error}</p>}
-      {loading ? <p>読み込み中...</p> : items.length === 0 ? <p>お問い合わせはありません。</p> : (
+      {error && <div role="alert" style={{ color: "#a33", marginBottom: 16 }}><p>{error}</p><button type="button" onClick={() => void load()} style={{ minHeight: 44, border: "1px solid", borderRadius: 8, padding: "8px 16px", marginTop: 8 }}>再試行する</button></div>}
+      {loading ? <div role="status" aria-busy="true" aria-label="お問い合わせを読み込み中" style={{ display: "grid", gap: 12 }}><span className="sr-only">読み込み中</span>{[1,2,3].map(n=><div key={n} aria-hidden="true" className="animate-pulse motion-reduce:animate-none" style={{ border: "1px solid #ddd", borderRadius: 8, padding: 20 }}><div className="h-4 w-1/2 rounded bg-gray-200"/><div className="mt-4 h-3 w-3/4 rounded bg-gray-200"/></div>)}</div> : error ? null : items.length === 0 ? <p>お問い合わせはありません。</p> : (
         <div style={{ display: "grid", gap: 12 }}>
           {items.map(item => <Link key={item.id} href={`/admin/contacts/${item.id}`} style={{ display: "block", padding: 16, border: "1px solid #bbb", borderRadius: 8, textDecoration: "none", color: "inherit" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><strong>{item.subject}</strong><span>{statusNames[item.status] || item.status}</span></div>

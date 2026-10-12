@@ -1,15 +1,17 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { useToast } from "@/components/ToastProvider"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { createNotification } from "@/lib/notification"
 import PlanBadge from "@/components/PlanBadge"
 import PostCard from "@/components/PostCard"
 import { hydrateReposts } from "@/lib/hydrateReposts"
-import { BookOpen, Award, Users, UserRoundPlus, FileText, PenLine, UserCheck, Ban, VolumeX, Flag, X } from "lucide-react"
+import { BookOpen, Award, Users, UserRoundPlus, FileText, PenLine, UserCheck, Ban, VolumeX } from "lucide-react"
 
 export default function UserPage() {
+  const toast = useToast()
   const params = useParams()
   const userId = params.id
 
@@ -30,12 +32,6 @@ export default function UserPage() {
   const [relationBusy, setRelationBusy] = useState(false)
   const [relationError, setRelationError] = useState("")
   const [relationMessage, setRelationMessage] = useState("")
-  const [reportOpen, setReportOpen] = useState(false)
-  const [reportReason, setReportReason] = useState("")
-  const [reportDetails, setReportDetails] = useState("")
-  const [reportBusy, setReportBusy] = useState(false)
-  const [reportError, setReportError] = useState("")
-  const [reportMessage, setReportMessage] = useState("")
 
   useEffect(() => {
     if (!userId) return
@@ -221,6 +217,7 @@ const {
     if (error) {
       console.error(error)
       setFollowError("フォローできませんでした。時間をおいて再度お試しください。")
+      toast.error("フォローできませんでした。")
       setFollowBusy(false)
       return
     }
@@ -242,6 +239,7 @@ undefined,
 `/user/${me.id}`
 )
 
+    toast.success("フォローしました。")
     setIsFollowing(true)
     setFollowers((prev) => prev + 1)
     setFollowBusy(false)
@@ -261,35 +259,15 @@ undefined,
     if (error) {
       console.error(error)
       setFollowError("フォロー解除に失敗しました。")
+      toast.error("フォロー解除に失敗しました。")
       setFollowBusy(false)
       return
     }
 
     setIsFollowing(false)
     setFollowers((prev) => Math.max(0, prev - 1))
+    toast.success("フォローを解除しました。")
     setFollowBusy(false)
-  }
-
-  const submitUserReport = async (event) => {
-    event.preventDefault()
-    if (!me || me.id === userId || !reportReason || reportBusy) return
-    setReportBusy(true)
-    setReportError("")
-    const { error } = await supabase.rpc("submit_user_report", {
-      p_target_user_id: userId,
-      p_reason: reportReason,
-      p_details: reportDetails.trim() || null,
-    })
-    setReportBusy(false)
-    if (error) {
-      console.error("ユーザー通報エラー:", error)
-      setReportError("通報を送信できませんでした。時間をおいて再度お試しください。")
-      return
-    }
-    setReportOpen(false)
-    setReportReason("")
-    setReportDetails("")
-    setReportMessage("通報を受け付けました。ご協力ありがとうございます。")
   }
 
   const toggleRelation = async (kind) => {
@@ -319,6 +297,7 @@ undefined,
           if (unfollowError) {
             console.error("フォロー解除エラー", unfollowError)
             setRelationMessage("ブロックを保存しましたが、フォロー解除に失敗しました。")
+            toast.error("ブロックは保存されましたが、フォロー解除に失敗しました。")
           } else {
             setIsFollowing(false)
             setFollowers(prev => Math.max(0, prev - 1))
@@ -328,13 +307,14 @@ undefined,
         setIsMuted(!active)
       }
       if (!(blocking && !active && isFollowing)) {
-        setRelationMessage(blocking
+        toast.success(blocking
           ? (active ? "ブロックを解除しました。" : "ブロックしました。")
           : (active ? "ミュートを解除しました。" : "ミュートしました。"))
       }
     } catch (error) {
       console.error("ブロック・ミュート更新エラー", error)
       setRelationError("設定を変更できませんでした。時間をおいて再度お試しください。")
+      toast.error("設定を変更できませんでした。")
     } finally {
       setRelationBusy(false)
     }
@@ -401,14 +381,8 @@ undefined,
                       className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#e8c7a9] px-4 py-2 text-sm hover:bg-[#fff4e7] disabled:opacity-50">
                       <VolumeX size={16} /> {isMuted ? "ミュート解除" : "ミュート"}
                     </button>
-                    <button type="button" onClick={() => { setReportError(""); setReportOpen(true) }}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#e8c7a9] px-4 py-2 text-sm hover:bg-[#fff4e7]">
-                      <Flag size={16} /> 通報する
-                    </button>
                   </div>
                 )}
-
-                {reportMessage && <p role="status" className="mt-3 text-sm text-[#7d684e]">{reportMessage}</p>}
                 {relationMessage && <p role="status" className="mt-3 text-sm text-[#7d684e]">{relationMessage}</p>}
                 {relationError && <p role="alert" className="mt-3 text-sm text-red-600">{relationError}</p>}
                 {followError && <p role="alert" className="mt-3 text-sm text-red-600">{followError}</p>}
@@ -460,38 +434,6 @@ undefined,
           </>
         )}
       </div>
-      {reportOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#38291d]/55 px-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !reportBusy) setReportOpen(false) }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="user-report-title" className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="user-report-title" className="text-lg font-bold">ユーザーを通報</h2>
-              <button type="button" aria-label="閉じる" disabled={reportBusy} onClick={() => setReportOpen(false)} className="rounded-full p-2 hover:bg-[#fff4e7]"><X size={20} /></button>
-            </div>
-            <p className="mt-2 text-sm text-[#826d5d]">通報内容は相手には通知されません。</p>
-            <form onSubmit={submitUserReport} className="mt-5 space-y-4">
-              <label className="block text-sm font-semibold" htmlFor="user-report-reason">通報理由（必須）</label>
-              <select id="user-report-reason" required value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full rounded-xl border border-[#ead9c8] bg-white p-3 text-sm">
-                <option value="">理由を選択してください</option>
-                <option value="spam">スパム・宣伝</option>
-                <option value="harassment">嫌がらせ・誹謗中傷</option>
-                <option value="hate">差別・ヘイト</option>
-                <option value="sexual">性的な内容</option>
-                <option value="violence">暴力的な内容</option>
-                <option value="copyright">著作権侵害</option>
-                <option value="other">その他</option>
-              </select>
-              <label className="block text-sm font-semibold" htmlFor="user-report-details">詳細（任意・1000文字以内）</label>
-              <textarea id="user-report-details" value={reportDetails} onChange={(e) => setReportDetails(e.target.value.slice(0, 1000))} maxLength={1000} rows={4} placeholder="具体的な状況があれば入力してください" className="w-full resize-y rounded-xl border border-[#ead9c8] p-3 text-sm" />
-              <p className="text-right text-xs text-[#826d5d]">{reportDetails.length} / 1000</p>
-              {reportError && <p role="alert" className="text-sm text-red-600">{reportError}</p>}
-              <div className="flex gap-3">
-                <button type="button" disabled={reportBusy} onClick={() => setReportOpen(false)} className="flex-1 rounded-xl border border-[#ead9c8] py-3 text-sm font-semibold">キャンセル</button>
-                <button type="submit" disabled={reportBusy || !reportReason} className="flex-1 rounded-xl bg-[#d78f57] py-3 text-sm font-bold text-white disabled:opacity-50">{reportBusy ? "送信中…" : "通報を送信"}</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
     </main>
   )
 }

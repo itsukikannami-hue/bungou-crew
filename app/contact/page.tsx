@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react"
 import Link from "next/link"
+import { useToast } from "@/components/ToastProvider"
 
 const categories = [
   { value: "general", label: "一般的なお問い合わせ" },
@@ -13,6 +14,7 @@ const categories = [
 ]
 
 export default function ContactPage() {
+  const toast = useToast()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [category, setCategory] = useState("general")
@@ -37,8 +39,11 @@ export default function ContactPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "送信に失敗しました。")
       setSuccess(true)
+      toast.success("お問い合わせを受け付けました。")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "送信に失敗しました。")
+      const errorMessage = err instanceof Error ? err.message : "送信に失敗しました。"
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setBusy(false)
     }

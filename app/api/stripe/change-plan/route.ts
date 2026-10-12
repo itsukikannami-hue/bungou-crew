@@ -309,18 +309,7 @@ export async function POST(request: Request) {
     // 完了
     // ----------------------------------------
 
-    console.log(
-      "プラン変更完了:",
-      {
-        userId: user.id,
-        subscriptionId:
-          subscription.id,
-        from: currentPlan,
-        to: plan,
-        priceId:
-          updatedPriceId,
-      }
-    )
+    void 0
 
     return NextResponse.json({
       success: true,

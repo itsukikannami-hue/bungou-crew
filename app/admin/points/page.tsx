@@ -398,7 +398,7 @@ export default function AdminPointsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-gray-50 px-3 py-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
           <p className="text-gray-500">
             ポイント情報を読み込んでいます...
@@ -409,7 +409,7 @@ export default function AdminPointsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-gray-50 px-3 py-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
 
         {/* ヘッダー */}
@@ -751,9 +751,9 @@ export default function AdminPointsPage() {
       {/* ポイント操作モーダル */}
 
       {selectedUser && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center overflow-y-auto p-3 sm:p-4">
 
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+          <div className="w-full max-w-md max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
 
             <div className="flex items-start justify-between mb-5">
 

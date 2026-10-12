@@ -224,7 +224,7 @@ export default function AdminPaymentsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-gray-50 px-3 py-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
           <p className="text-gray-500">
             決済情報を読み込んでいます...
@@ -235,7 +235,7 @@ export default function AdminPaymentsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-gray-50 px-3 py-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
 
         {/* ヘッダー */}

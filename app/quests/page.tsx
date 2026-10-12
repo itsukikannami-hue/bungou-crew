@@ -33,6 +33,7 @@ export default function QuestsPage() {
   const [quests, setQuests] = useState<QuestWithType[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -55,7 +56,7 @@ export default function QuestsPage() {
     }
     fetchQuests()
     return () => { active = false }
-  }, [])
+  }, [retryKey])
 
   const formatDeadline = (deadline: string) =>
     new Date(deadline).toLocaleString("ja-JP", {

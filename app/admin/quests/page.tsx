@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 type Quest = {
   id: string
@@ -37,12 +38,15 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function AdminQuestsPage() {
+  const toast = useToast()
   const [quests, setQuests] = useState<QuestWithProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
 
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+
+  const cancelInFlightRef = useRef(false)
 
   const [updatingQuestId, setUpdatingQuestId] =
     useState<string | null>(null)
@@ -188,7 +192,7 @@ export default function AdminQuestsPage() {
   const handleCancelQuest = async (
     questId: string
   ) => {
-    if (updatingQuestId) return
+    if (cancelInFlightRef.current) return
 
     const quest = quests.find(
       (item) => item.id === questId
@@ -228,7 +232,7 @@ export default function AdminQuestsPage() {
           error
         )
 
-        alert(
+        toast.error(
           error.message ||
           "クエストのキャンセルに失敗しました。"
         )
@@ -249,7 +253,7 @@ export default function AdminQuestsPage() {
         )
       )
 
-      alert(
+      toast.success(
         "クエストをキャンセルしました。"
       )
     } catch (error) {
@@ -258,7 +262,7 @@ export default function AdminQuestsPage() {
         error
       )
 
-      alert(
+      toast.error(
         "クエストのキャンセルに失敗しました。"
       )
     } finally {

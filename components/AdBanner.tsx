@@ -83,10 +83,13 @@ export default function AdBanner() {
       )
 
       if (impressionError) {
-        console.error(
-          "広告表示回数更新エラー:",
-          impressionError
-        )
+        console.error("広告表示回数更新エラー:", {
+          code: impressionError.code,
+          message: impressionError.message,
+          details: impressionError.details,
+          hint: impressionError.hint,
+          adId: selectedAd.id,
+        })
       }
     }
 

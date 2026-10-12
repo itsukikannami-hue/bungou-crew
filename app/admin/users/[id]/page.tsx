@@ -95,8 +95,8 @@ const [pointMessage, setPointMessage] =
   const fetchPoints = async () => {
     if (!userId) return
   
-    console.log("① FETCH POINTS START")
-    console.log("② FETCH POINTS USER ID:", userId)
+    void 0
+    void 0
   
     const {
       data,
@@ -111,13 +111,7 @@ const [pointMessage, setPointMessage] =
       })
       .eq("user_id", userId)
   
-    console.log("③ FETCH POINTS RAW RESULT:", {
-      error,
-      data,
-      count,
-      status,
-      statusText,
-    })
+    void 0
   
     if (error) {
       console.error(
@@ -128,9 +122,7 @@ const [pointMessage, setPointMessage] =
     }
   
     if (!data || data.length === 0) {
-      console.log(
-        "⑤ user_pointsに該当データがありません"
-      )
+      void 0
   
       setPoints(0)
       return
@@ -138,17 +130,11 @@ const [pointMessage, setPointMessage] =
   
     const userPoints = data[0].points ?? 0
   
-    console.log(
-      "⑥ 取得したポイント:",
-      userPoints
-    )
+    void 0
   
     setPoints(userPoints)
   
-    console.log(
-      "⑦ setPoints実行:",
-      userPoints
-    )
+    void 0
   }
 
   const fetchPointTransactions = async () => {
@@ -169,13 +155,7 @@ const [pointMessage, setPointMessage] =
         ascending: false,
       })
   
-    console.log(
-      "POINT TRANSACTIONS RESULT:",
-      {
-        data,
-        error,
-      }
-    )
+    void 0
   
     if (error) {
       console.error(
@@ -239,7 +219,7 @@ const [pointMessage, setPointMessage] =
   
       const result = await response.json()
 
-      console.log("POINT API RESULT:", result)
+      void 0
   
       if (!response.ok) {
         setPointError(
@@ -578,7 +558,7 @@ const [pointMessage, setPointMessage] =
       </div>
 
       {showPointModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-3 sm:p-4">
 
     <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
 

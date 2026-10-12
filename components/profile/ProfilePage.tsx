@@ -61,8 +61,8 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user) return;
 
-    console.log("保存前の UID:", user?.id);
-    console.log("保存する avatarUrl:", avatarUrl);
+    void 0;
+    void 0;
 
     // プロフィール保存
     await saveProfile(user.id, username, bio, avatarUrl);
@@ -78,7 +78,7 @@ export default function ProfilePage() {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        console.log("ログインユーザーID:", data.user.id);
+        void 0;
         setUser(data.user);
       }
     };

@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     const itemId = body.itemId
+    const requestId = body.requestId
 
     if (!itemId) {
       return NextResponse.json(
@@ -38,14 +39,19 @@ export async function POST(request: Request) {
       )
     }
 
+    if (typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      return NextResponse.json({ error: "有効なリクエストIDが必要です。" }, { status: 400 })
+    }
+
     // 購入処理
     const {
       data,
       error,
     } = await supabase.rpc(
-      "purchase_item",
+      "purchase_item_once",
       {
         p_item_id: itemId,
+        p_request_id: requestId,
       }
     )
 

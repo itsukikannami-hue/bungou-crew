@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import OwnedItemsPanel from "@/components/OwnedItemsPanel"
+import { useToast } from "@/components/ToastProvider"
 
 type Item = {
   id: string
@@ -43,6 +44,10 @@ const AD_PRICES = {
 } as const
 
 export default function ItemsPage() {
+  const toast = useToast()
+  // Reuse IDs after an ambiguous network failure to avoid duplicate charges.
+  const purchaseRequestIds = useRef<Record<string, string>>({})
+  const adRequestRef = useRef<{ fingerprint: string; id: string } | null>(null)
   const [activeTab, setActiveTab] = useState<"items" | "points" | "ads">("items")
   const [items, setItems] = useState<Item[]>([])
   const [ownedOpen, setOwnedOpen] = useState(false)
@@ -61,6 +66,9 @@ const [pointsLoading, setPointsLoading] = useState(true)
   const [adLinkUrl, setAdLinkUrl] = useState("")
   const [adDuration, setAdDuration] = useState<7 | 15 | 30>(7)
   const [adLoading, setAdLoading] = useState(false)
+  const adSubmittingRef = useRef(false)
+  const purchasingRef = useRef(false)
+  const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null)
   const [userPlan, setUserPlan] = useState<
   "free" | "premium" | "ultimate"
 >("free")
@@ -212,6 +220,11 @@ const [pointsLoading, setPointsLoading] = useState(true)
 
   // 通常アイテム購入
   const handlePurchase = async (itemId: string) => {
+    if (purchasingRef.current) return
+    purchasingRef.current = true
+    setPurchasingItemId(itemId)
+    const requestId = purchaseRequestIds.current[itemId] ?? crypto.randomUUID()
+    purchaseRequestIds.current[itemId] = requestId
     try {
       const response = await fetch(
         "/api/items/purchase",
@@ -222,49 +235,62 @@ const [pointsLoading, setPointsLoading] = useState(true)
           },
           body: JSON.stringify({
             itemId,
+            requestId,
           }),
         }
       )
 
       const result = await response.json()
+      // A definitive API response allows a new intentional purchase.
+      delete purchaseRequestIds.current[itemId]
 
       if (!response.ok) {
-        alert(
+        toast.error(
           result.error ||
             "購入に失敗しました。"
         )
         return
       }
 
-      alert("アイテムを購入しました。")
+      toast.success("アイテムを購入しました。")
       await fetchPoints()
       await fetchPointHistory(historyLimit)
     } catch (error) {
       console.error(error)
 
-      alert(
+      toast.error(
         "購入処理に失敗しました。"
       )
+    } finally {
+      purchasingRef.current = false
+      setPurchasingItemId(null)
     }
   }
 
   // 広告出稿
   const handleAdSubmit = async () => {
+    if (adSubmittingRef.current) return
     if (!adMessage.trim()) {
-      alert("広告メッセージを入力してください。")
+      toast.error("広告メッセージを入力してください。")
       return
     }
   
     if (adMessage.trim().length > 140) {
-      alert("広告メッセージは140文字以内にしてください。")
+      toast.error("広告メッセージは140文字以内にしてください。")
       return
     }
   
     if (!adLinkUrl.trim()) {
-      alert("作品ページURLを入力してください。")
+      toast.error("作品ページURLを入力してください。")
       return
     }
   
+    adSubmittingRef.current = true
+    const fingerprint = JSON.stringify([adMessage.trim(), adLinkUrl.trim(), adDuration])
+    const requestId = adRequestRef.current?.fingerprint === fingerprint
+      ? adRequestRef.current.id
+      : crypto.randomUUID()
+    adRequestRef.current = { fingerprint, id: requestId }
     setAdLoading(true)
   
     try {
@@ -275,7 +301,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
       } = await supabase.auth.getUser()
   
       if (userError || !user) {
-        alert("ログインが必要です。")
+        toast.error("ログインが必要です。")
         return
       }
   
@@ -291,11 +317,13 @@ const [pointsLoading, setPointsLoading] = useState(true)
             message: adMessage.trim(),
             linkUrl: adLinkUrl.trim(),
             durationDays: adDuration,
+            requestId,
           }),
         }
       )
   
       const result = await response.json()
+      adRequestRef.current = null
   
       if (!response.ok) {
         console.error(
@@ -303,7 +331,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
           result
         )
   
-        alert(
+        toast.error(
           result.error ||
             "広告の出稿に失敗しました。"
         )
@@ -312,7 +340,7 @@ const [pointsLoading, setPointsLoading] = useState(true)
       }
   
       // ③ 成功
-      alert(
+      toast.success(
         `${adDuration}日間の広告を出稿しました。`
       )
   
@@ -331,10 +359,11 @@ const [pointsLoading, setPointsLoading] = useState(true)
         error
       )
   
-      alert(
+      toast.error(
         "広告出稿処理に失敗しました。"
       )
     } finally {
+      adSubmittingRef.current = false
       setAdLoading(false)
     }
   }
@@ -421,9 +450,10 @@ const [pointsLoading, setPointsLoading] = useState(true)
               onClick={() =>
                 handlePurchase(item.id)
               }
-              className="mt-5 rounded-xl bg-[#d78f57] px-5 py-3 font-bold text-white hover:bg-[#c88047]"
+              disabled={purchasingItemId !== null}
+              className="mt-5 rounded-xl bg-[#d78f57] px-5 py-3 font-bold text-white hover:bg-[#c88047] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              購入
+              {purchasingItemId === item.id ? "購入処理中…" : "購入"}
             </button>
 
           </div>
@@ -712,19 +742,19 @@ const [pointsLoading, setPointsLoading] = useState(true)
               const result = await response.json()
 
               if (!response.ok) {
-                alert(result.error || "ポイント購入に失敗しました。")
+                toast.error(result.error || "ポイント購入に失敗しました。")
                 return
               }
 
               if (!result.url) {
-                alert("Stripe決済ページを取得できませんでした。")
+                toast.error("Stripe決済ページを取得できませんでした。")
                 return
               }
 
               window.location.href = result.url
             } catch (error) {
               console.error("ポイント購入エラー:", error)
-              alert("ポイント購入処理に失敗しました。")
+              toast.error("ポイント購入処理に失敗しました。")
             }
           }}
           className="mt-4 w-full rounded-xl bg-[#d78f57] px-4 py-3 font-bold text-white hover:bg-[#c88047]"

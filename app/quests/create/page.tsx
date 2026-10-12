@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 type QuestType = {
   id: string
@@ -15,6 +16,7 @@ type QuestType = {
 }
 
 export default function QuestCreatePage() {
+  const toast = useToast()
   const router = useRouter()
 
   const [questTypes, setQuestTypes] = useState<QuestType[]>([])
@@ -115,35 +117,35 @@ export default function QuestCreatePage() {
     if (submitting) return
 
     if (!questTypeId) {
-      alert("クエスト種類を選択してください。")
+      toast.error("クエスト種類を選択してください。")
       return
     }
 
     if (!title.trim()) {
-      alert("クエストタイトルを入力してください。")
+      toast.error("クエストタイトルを入力してください。")
       return
     }
 
     if (!description.trim()) {
-      alert("依頼内容を入力してください。")
+      toast.error("依頼内容を入力してください。")
       return
     }
 
     if (!rewardPerPerson) {
-      alert("報酬を入力してください。")
+      toast.error("報酬を入力してください。")
       return
     }
 
     const reward = Number(rewardPerPerson)
 
     if (!Number.isInteger(reward) || reward <= 0) {
-      alert("報酬は1以上の整数で入力してください。")
+      toast.error("報酬は1以上の整数で入力してください。")
       return
     }
 
     if (selectedQuestType) {
       if (reward < selectedQuestType.min_reward) {
-        alert(
+        toast.error(
           `このクエストの報酬は${selectedQuestType.min_reward.toLocaleString()}pt以上です。`
         )
         return
@@ -153,7 +155,7 @@ export default function QuestCreatePage() {
         selectedQuestType.reward_type === "fixed" &&
         reward !== selectedQuestType.fixed_reward
       ) {
-        alert(
+        toast.error(
           `このクエストの報酬は${selectedQuestType.fixed_reward?.toLocaleString()}ptです。`
         )
         return
@@ -166,24 +168,24 @@ export default function QuestCreatePage() {
       !Number.isInteger(participants) ||
       participants < 1
     ) {
-      alert("募集人数は1人以上にしてください。")
+      toast.error("募集人数は1人以上にしてください。")
       return
     }
 
     if (!deadline) {
-      alert("締切日時を設定してください。")
+      toast.error("締切日時を設定してください。")
       return
     }
 
     const deadlineDate = new Date(deadline)
 
     if (Number.isNaN(deadlineDate.getTime())) {
-      alert("正しい締切日時を入力してください。")
+      toast.error("正しい締切日時を入力してください。")
       return
     }
 
     if (deadlineDate <= new Date()) {
-      alert("締切日時は現在より後にしてください。")
+      toast.error("締切日時は現在より後にしてください。")
       return
     }
 
@@ -191,7 +193,7 @@ export default function QuestCreatePage() {
       try {
         new URL(targetUrl.trim())
       } catch {
-        alert("作品ページURLが正しくありません。")
+        toast.error("作品ページURLが正しくありません。")
         return
       }
     }
@@ -214,13 +216,13 @@ export default function QuestCreatePage() {
     
       if (error) {
         console.error("クエスト作成エラー:", error)
-        alert(error.message)
+        toast.error(error.message)
         return
       }
     
-      console.log("クエスト作成結果:", data)
+      void 0
     
-      alert("クエストを作成しました！")
+      toast.success("クエストを作成しました！")
     
       router.push(`/quests/${data.quest_id}`)
     } finally {

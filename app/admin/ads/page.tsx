@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 
 type Ad = {
   id: string
@@ -22,9 +23,11 @@ type Ad = {
 }
 
 export default function AdminAdsPage() {
+  const toast = useToast()
   const [ads, setAds] = useState<Ad[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
+  const stopInFlightRef = useRef(false)
   const [stoppingAdId, setStoppingAdId] = useState<string | null>(null)
 
   const fetchAds = async () => {
@@ -112,7 +115,7 @@ export default function AdminAdsPage() {
         )
       }
 
-      alert("広告を停止しました。")
+      toast.success("広告を停止しました。")
 
       await fetchAds()
     } catch (error) {
@@ -202,7 +205,7 @@ export default function AdminAdsPage() {
 
   if (loading) {
     return (
-      <main className="p-6">
+      <main className="px-3 py-4 sm:p-6">
         <p className="text-gray-500">
           広告一覧を読み込んでいます...
         </p>
@@ -211,7 +214,7 @@ export default function AdminAdsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl p-6">
+    <main className="mx-auto max-w-7xl px-3 py-4 sm:p-6">
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">

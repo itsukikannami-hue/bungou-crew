@@ -4,11 +4,7 @@ import { authClient, xCallbackUrl } from '@/lib/xServer'
 
 export const runtime = 'nodejs'
 export async function GET(request: Request) {
-  console.log("[X ENV CHECK]", {
-    hasClientId: Boolean(process.env.X_CLIENT_ID),
-    nodeEnv: process.env.NODE_ENV,
-    vercelEnv: process.env.VERCEL_ENV,
-  })
+  void 0
   const supabase = await authClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'ログインが必要です' }, { status: 401 })

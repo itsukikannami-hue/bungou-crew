@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/components/ToastProvider"
 import StartModal from "@/components/StartModal"
+import BungouReaction from "@/components/BungouReaction"
+import DailyMission from "@/components/DailyMission"
+import FixedOverlay from "@/components/FixedOverlay"
 import Link from "next/link"
 import Confetti from "react-confetti"
 import { useRef } from "react"
@@ -19,6 +23,9 @@ import {
 
 
 export default function HomeBungou() {
+  const toast = useToast()
+  const [bungouTapReaction, setBungouTapReaction] = useState(0)
+  const [bungouWritingReaction, setBungouWritingReaction] = useState(0)
 
 
   const grantRareBungou = async (userId) => {
@@ -47,6 +54,49 @@ export default function HomeBungou() {
 
   const [userItems, setUserItems] = useState([])
   const [todayStats, setTodayStats] = useState({ words: 0, minutes: 0 })
+  const [streakCelebration, setStreakCelebration] = useState(null)
+  const streakCelebrationTimer = useRef(null)
+
+  useEffect(() => () => {
+    if (streakCelebrationTimer.current) window.clearTimeout(streakCelebrationTimer.current)
+  }, [])
+
+  // 執筆保存後だけ判定する。ページ表示時や再読込時には演出を出さない。
+  const celebrateWritingStreak = async (userId) => {
+    try {
+      const jstDay = (value) => new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date(value))
+      const today = jstDay(new Date())
+      const { data, error } = await supabase.from("writing_logs")
+        .select("created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(2000)
+      if (error || !data?.length) return
+      const dates = data.map((log) => jstDay(log.created_at))
+      // その日の初回執筆が保存された瞬間にのみ表示する。
+      if (dates.filter((day) => day === today).length !== 1) return
+      const writtenDays = new Set(dates)
+      let count = 0
+      const day = new Date(`${today}T00:00:00+09:00`)
+      while (writtenDays.has(jstDay(day))) {
+        count += 1
+        day.setUTCDate(day.getUTCDate() - 1)
+      }
+      if (count < 2) return
+      const key = `bungou:writing-streak-celebrated:${userId}:${today}`
+      if (window.sessionStorage.getItem(key) === "1") return
+      window.sessionStorage.setItem(key, "1")
+      setStreakCelebration(count)
+      if (streakCelebrationTimer.current) window.clearTimeout(streakCelebrationTimer.current)
+      streakCelebrationTimer.current = window.setTimeout(() => setStreakCelebration(null), 5500)
+    } catch (error) {
+      // 演出が失敗しても執筆保存・EXP・バッジ処理を止めない。
+      console.warn("連続執筆演出をスキップしました:", error)
+    }
+  }
+
 
   const fetchTodayStats = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -82,7 +132,7 @@ export default function HomeBungou() {
       } = await supabase.auth.getUser()
   
       if (!user) {
-        alert("ログインが必要です。")
+        toast.error("ログインが必要です。")
         return
       }
   
@@ -104,7 +154,7 @@ export default function HomeBungou() {
       const result = await response.json()
   
       if (!response.ok) {
-        alert(
+        toast.error(
           result.error ||
           "アイテムの使用に失敗しました。"
         )
@@ -119,7 +169,7 @@ export default function HomeBungou() {
       setShowRecoveryModal(false)
       setSelectedRecoveryDate("")
   
-      alert(
+      toast.success(
         result.message ||
         "アイテムを使用しました。"
       )
@@ -130,7 +180,7 @@ export default function HomeBungou() {
         error
       )
   
-      alert(
+      toast.error(
         "アイテム使用処理に失敗しました。"
       )
     }
@@ -138,7 +188,6 @@ export default function HomeBungou() {
 
   const [bungou, setBungou] = useState(null)
 
-  const [showInfo, setShowInfo] = useState(false)
   const [showStartModal, setShowStartModal] = useState(false)
   const [showFinishModal, setShowFinishModal] = useState(false)
 
@@ -182,7 +231,7 @@ export default function HomeBungou() {
 const [postText,setPostText] = useState("")
 
 const [sharing, setSharing] = useState(false)
-const [isXRewarded, setIsXRewarded] = useState(false)
+const [xShareRewarded, setXShareRewarded] = useState(false)
 
 const createWritingShareText = async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -204,46 +253,36 @@ const createWritingShareText = async () => {
 
 const shareWritingToX = async () => {
   if (sharing) return
-  if (!lastWritingLogId) {
-    alert("執筆記録を確認できません。再度執筆を完了してください。")
-    return
-  }
-
-  // クリック直後にタブを開き、非同期処理によるポップアップブロックを防ぐ。
+  // ユーザー操作と同時に開く（await 後だとポップアップブロックされる場合がある）。
   const popup = window.open("about:blank", "_blank")
   if (!popup) {
-    alert("ポップアップがブロックされました。ブラウザでポップアップを許可して再度お試しください。")
+    toast.error("Xの共有画面を開けませんでした。ポップアップの許可を確認してください。")
     return
   }
+  popup.opener = null
   setSharing(true)
   try {
     const text = await createWritingShareText()
-    const intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
-    popup.location.replace(intentUrl)
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+    popup.location.replace(url)
 
-    // 無料方式では投稿完了を検証できないため、X投稿画面を開いた時点で付与。
-    // Supabase側のユニーク制約により、同じ執筆記録での二重付与は不可。
-    if (!isXRewarded) {
-      const { error } = await supabase.rpc("reward_x_share_intent", {
+    // X連携は不要。既存のサーバーRPCが同じ執筆ログへの二重付与を防ぐ。
+    if (lastWritingLogId && !xShareRewarded) {
+      const { data, error } = await supabase.rpc("reward_x_share_intent", {
         p_writing_log_id: lastWritingLogId,
       })
       if (error) {
-        if (error.code === "23505") {
-          setIsXRewarded(true)
-          alert("Xの投稿画面を開きました。この執筆記録の10ポイントは付与済みです。")
-        } else {
-          console.error("X共有ポイント付与エラー:", error)
-          alert(`Xの投稿画面を開きましたが、ポイント付与に失敗しました。\n${error.message}`)
-        }
+        console.error("X共有ポイント付与エラー:", error)
+        toast.error("Xの共有画面は開きましたが、ポイント付与を確認できませんでした。")
       } else {
-        setIsXRewarded(true)
-        alert("Xの投稿画面を開きました！ 10ポイント獲得！")
+        setXShareRewarded(true)
+        toast.success("Xの共有画面を開きました！共有特典の処理が完了しました。")
       }
     }
   } catch (error) {
     popup.close()
-    console.error("X共有画面の起動エラー:", error)
-    alert("Xの共有画面を開けませんでした。もう一度お試しください。")
+    console.error("X共有エラー:", error)
+    toast.error("X共有の準備に失敗しました。もう一度お試しください。")
   } finally {
     setSharing(false)
   }
@@ -290,11 +329,11 @@ const openWritingPost = async () => {
   const submitWritingPost = async () => {
     if (postingShare || isPosted) return
     if (!postText.trim()) {
-      alert("投稿内容を入力してください")
+      toast.error("投稿内容を入力してください")
       return
     }
     if (!lastWritingLogId) {
-      alert("執筆記録を確認できません。再度執筆を完了してください。")
+      toast.error("執筆記録を確認できません。再度執筆を完了してください。")
       return
     }
 
@@ -304,35 +343,13 @@ const openWritingPost = async () => {
         p_writing_log_id: lastWritingLogId,
         p_content: postText.trim(),
       })
-      if (error) {
-        console.error("共有RPCエラー詳細:", {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        })
-      
-        alert(
-          `共有エラー\n\n` +
-          `コード: ${error.code || "不明"}\n` +
-          `内容: ${error.message || "不明"}\n` +
-          `詳細: ${error.details || "なし"}`
-        )
-      
-        return
-      }
+      if (error) throw error
       setShowPostModal(false)
       setIsPosted(true)
-      alert("ブンゴウクルー内に共有しました！ 5ポイント獲得！")
+      toast.success("ブンゴウクルー内に共有しました！ 5ポイント獲得！")
     } catch (error) {
       console.error("執筆結果の共有エラー:", error)
-    
-      const message =
-        error instanceof Error
-          ? error.message
-          : String(error)
-    
-      alert(`共有に失敗しました。\n\n${message}`)
+      toast.error("共有できませんでした。既に共有済みか、対象期間外の可能性があります。")
     } finally {
       setPostingShare(false)
     }
@@ -779,6 +796,22 @@ console.log("🌱 species:", updatedInstance?.bungou_species)
     fetchTodayStats()
   }, [])
 
+  // 日本時間の日付が変わったときに本日の執筆記録を更新する。
+  useEffect(() => {
+    const jstDate = () => new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date())
+    let previousDate = jstDate()
+    const interval = window.setInterval(() => {
+      const currentDate = jstDate()
+      if (currentDate !== previousDate) {
+        previousDate = currentDate
+        void fetchTodayStats()
+      }
+    }, 30000)
+    return () => window.clearInterval(interval)
+  }, [])
+
   // =========================
   // 🐾 表示制御（修正なし）
   // =========================
@@ -1079,9 +1112,10 @@ console.log("🌱 species:", updatedInstance?.bungou_species)
       throw writingLogError || new Error("執筆記録の保存に失敗しました")
     }
     setLastWritingLogId(savedWritingLog.id)
+    setXShareRewarded(false)
     setIsPosted(false)
-    setIsXRewarded(false)
     await fetchTodayStats()
+    void celebrateWritingStreak(user.id)
 
 
       // 初執筆
@@ -1280,11 +1314,18 @@ const uniqueBadges = [...new Set(newBadges)]
     } else {
     
       // 通常EXP画面
+      setBungouWritingReaction((count) => count + 1)
       setShowExpScreen(true)
     }
+    // 執筆記録と進化処理が完了した後に、ミッションの進捗を再取得する。
+    window.dispatchEvent(new Event("bungou:writing-saved"))
     // 処理完了後は再読み込みで二重付与しない。
     const saved = JSON.parse(localStorage.getItem(TIMER_KEY) || "null")
     if (saved) localStorage.setItem(TIMER_KEY, JSON.stringify({ ...saved, status: "submitted" }))
+    // 保存完了後に終了入力画面を閉じ、タイマー監視による再表示を止める。
+    setShowFinishModal(false)
+    setTimer(null)
+    setTimeLeft(0)
     } finally { submittingRef.current = false }
   }
 
@@ -1351,6 +1392,12 @@ const expProgress = currentStage >= 3
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4 text-[#775b45]">
+      {streakCelebration !== null && (
+        <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-6 z-[9999] mx-auto max-w-sm rounded-2xl border-2 border-amber-300 bg-[#fffaf0] px-5 py-4 text-center shadow-2xl motion-safe:animate-bounce">
+          <p className="text-2xl font-bold">🔥 {streakCelebration}日連続執筆！</p>
+          <p className="mt-1 text-sm font-semibold">継続記録を更新しました！ 🎉</p>
+        </div>
+      )}
       <section className="rounded-3xl border border-[#f2e3d2] bg-white p-5 shadow-sm sm:p-7">
         <h2 className="mb-2 text-center text-xl font-bold">今日も一緒に執筆しよう！</h2>
         <p className="mb-4 text-center text-sm text-[#927b69]">{isEgg ? "新しい物語を育てよう" : species?.name}</p>
@@ -1360,7 +1407,7 @@ const expProgress = currentStage >= 3
       {isEgg && (
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce-slow cursor-pointer"
-          onClick={() => setShowInfo(prev => !prev)}
+          onClick={() => { setBungouTapReaction((count) => count + 1) }}
         >
 <img
 src={
@@ -1381,7 +1428,7 @@ src={
           left: `${position.x}%`,
           top: `${position.y}%`
         }}
-        onClick={() => setShowInfo(prev => !prev)}
+        onClick={() => { setBungouTapReaction((count) => count + 1) }}
       >
 <img
   src={currentBungouImage}
@@ -1399,13 +1446,13 @@ src={
 />
         </div>
       )}
-
+          <BungouReaction trigger={bungouWritingReaction} tapTrigger={bungouTapReaction} isEgg={isEgg} />
         </div>
         <button
           onClick={() => {
             if (timer) {
               if (timeLeft === 0) setShowFinishModal(true)
-              else alert("執筆タイマーが進行中です。終了するまでお待ちください。")
+              else toast.info("執筆タイマーが進行中です。終了するまでお待ちください。")
               return
             }
             setShowStartModal(true)
@@ -1423,6 +1470,9 @@ src={
             <p className="text-sm text-[#927b69]">今日の執筆時間</p>
             <p className="mt-1 text-xl font-bold">{todayStats.minutes.toLocaleString()} <span className="text-sm font-normal">分</span></p>
           </div>
+        </div>
+        <div className="mt-6">
+          <DailyMission />
         </div>
         <div className="mt-5">
           <div className="mb-2 flex justify-between text-sm">
@@ -1444,37 +1494,6 @@ src={
         習慣リカバリーを使う
       </button>
 
-      {/* ⏱ タイマー */}
-      {timer && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-white shadow-lg px-6 py-3 rounded-xl text-lg font-bold z-50">
-          ⏱ 残り時間：
-          {Math.floor(timeLeft / 60)}:
-          {String(timeLeft % 60).padStart(2, "0")}
-        </div>
-      )}
-
-      {/* 📊 情報パネル */}
-      {showInfo && (
-        <div className="fixed left-1/2 top-1/3 z-40 w-64 -translate-x-1/2 rounded-xl border border-[#f2deca] bg-white p-4 text-sm shadow-lg">
-
-          <button
-            onClick={() => setShowInfo(false)}
-            className="absolute top-1 right-2 text-gray-500"
-          >
-            ×
-          </button>
-
-          <div className="font-bold mb-2">
-            {isEgg ? "？？？" : species?.name}
-          </div>
-
-          <div>現在EXP: {currentExp}</div>
-
-          <div>次まで: {remainingExp} EXP</div>
-
-        </div>
-      )}
-
       {/* 🟦 StartModal */}
       {showStartModal && (
         <StartModal onClose={() => setShowStartModal(false)} />
@@ -1482,7 +1501,7 @@ src={
 
       {/* 🟨 終了モーダル */}
       {showFinishModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <FixedOverlay className="fixed inset-0 z-[310] flex items-center justify-center bg-black/50 p-4">
 
           <div className="bg-white p-6 rounded-xl w-80">
 
@@ -1514,7 +1533,7 @@ src={
 
           </div>
 
-        </div>
+        </FixedOverlay>
       )}
 
 
@@ -1522,7 +1541,7 @@ src={
 {/* 🌟 EXP獲得画面 */}
 {showExpScreen && (
 
-<div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[120]">
+<FixedOverlay className="fixed inset-0 z-[320] flex items-center justify-center overflow-y-auto bg-black/80 p-4">
 
   {/* 🎊 CRITICAL紙吹雪 */}
   {isCritical && (
@@ -1595,20 +1614,6 @@ src={
       </div>
     )}
 
-    {/* アプリ内共有のポイント案内と無料のX共有 */}
-    <div className="mt-4 rounded-2xl border border-amber-200 bg-white/80 px-4 py-3 text-left">
-      <p className="text-center text-sm font-bold text-amber-900">
-        🎁 執筆結果を共有してポイントGET！
-      </p>
-      <div className="mt-2 flex flex-col gap-1 text-sm font-semibold text-[#775b45]">
-        <p>📢 ブンゴウクルー内で共有：+5pt</p>
-        <p>𝕏 Xで共有画面を開く：+10pt（1執筆につき1回）</p>
-      </div>
-      <p className="mt-2 text-xs text-[#9d7656]">
-        ※ アプリ内共有は投稿完了で5pt。Xは投稿画面を開いた時点で10pt付与します（投稿完了は未確認）。
-      </p>
-    </div>
-
     {/* ボタン群 */}
     <div className="flex flex-col gap-3 mt-6">
 
@@ -1637,14 +1642,14 @@ rounded-xl
 
 </button>
 
-      {/* 無料のX投稿画面を開き、同じ執筆記録につき一度だけ10pt付与 */}
+      {/* 外部SNSへの共有（投稿ポイント付与とは別機能） */}
       <button
         type="button"
         onClick={shareWritingToX}
         disabled={sharing}
         className="rounded-xl bg-gray-900 py-3 font-bold text-white hover:bg-gray-800 disabled:opacity-50"
       >
-        {sharing ? "Xの投稿画面を準備中..." : "𝕏 Xで共有（+10pt・無料）"}
+        {sharing ? "Xを開いています..." : xShareRewarded ? "𝕏 Xで共有（特典受取済み）" : "𝕏 Xで共有（+10pt）"}
       </button>
 
 
@@ -1658,7 +1663,7 @@ rounded-xl
           clearSavedTimer()
           setInputWords(0)
           setLastWritingLogId(null)
-          setIsXRewarded(false)
+          setShowPostModal(false)
 
           setShowBadgeModal(false)
           setEarnedBadge(null)
@@ -1674,19 +1679,165 @@ rounded-xl
         ▶ 次へ
       </button>
 
+
+    </div>
+
+  </div>
+
+</FixedOverlay>
+
+)}
+
+{/* 🌟 進化画面 */}
+{showEvolutionScreen && (
+
+<FixedOverlay className="fixed inset-0 z-[330] grid place-items-center overflow-hidden bg-black/80 p-3 sm:p-4">
+
+  {/* 🎊 紙吹雪 */}
+  <Confetti
+    className="pointer-events-none !fixed !inset-0 z-0"
+    width={window.innerWidth}
+    height={window.innerHeight}
+    recycle={false}
+    numberOfPieces={
+      evolutionStage === 3
+        ? 700
+        : 300
+    }
+  />
+
+  <div
+    className={`
+      relative z-10 min-h-0 shrink-0
+      rounded-3xl
+      p-5 sm:p-8
+      w-[380px]
+      max-w-full
+      max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)]
+      overflow-y-auto
+      overscroll-contain
+      text-center
+      shadow-2xl
+
+      ${
+        evolutionStage === 1
+          ? "bg-yellow-100"
+
+        : evolutionStage === 2
+          ? "bg-blue-100"
+
+          : "bg-pink-100"
+      }
+    `}
+  >
+
+    {/* タイトル */}
+    <div className="text-2xl font-black mb-6 whitespace-pre-line">
+      {evolutionTitle}
+    </div>
+
+    {/* ブンゴウ画像 */}
+    <img
+  src={getBungouImage(evolutionStage)}
+  width={140}
+  alt={`${species?.name || "ブンゴウ"}の進化後の姿`}
+  className="
+    mx-auto
+    mb-6
+    animate-bounce
+  "
+/>
+
+    {/* メッセージ */}
+    <div className="mb-6 whitespace-pre-line text-gray-700">
+      {evolutionMessage}
+    </div>
+
+    {/* 成長によって解放された図鑑プロフィールへの導線 */}
+    {bungou?.species_id && (
+      <div className="mb-5 rounded-2xl border border-[#ead5b7] bg-white/80 px-4 py-4 text-[#694b38]">
+        <p className="text-sm font-bold">
+          {evolutionStage === 1
+            ? "📖 ブンゴウ図鑑にプロフィールが登録されました！"
+            : evolutionStage === 2
+              ? "📖 図鑑のセミプロ期プロフィールが解放されました！"
+              : "📖 図鑑のデビュー期プロフィールが解放されました！"}
+        </p>
+        <p className="mt-2 text-xs text-[#907b68]">成長したブンゴウの情報を確認できます。</p>
+        <Link
+          href={`/album/${bungou.species_id}`}
+          className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-[#d78f57] px-5 py-2 text-sm font-bold text-white hover:bg-[#c58049]"
+        >
+          解放されたプロフィールを見る →
+        </Link>
+      </div>
+    )}
+
+    {/* EXP */}
+    <div className="text-4xl font-black mb-6 text-yellow-500">
+      +{earnedExp} EXP
+    </div>
+
+    {/* ボタン */}
+    <div className="flex flex-col gap-3">
+
+      <button
+        className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-xl"
+      >
+        🎥 EXPを倍もらう
+      </button>
+
+      <button
+        type="button"
+        onClick={openWritingPost}
+        disabled={isPosted || postingShare}
+        className="rounded-xl bg-blue-500 py-3 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+      >
+        {isPosted ? "📢 アプリ内共有済み（+5pt）" : "📢 ブンゴウクルー内で共有（+5pt）"}
+      </button>
+
+      <button
+        type="button"
+        onClick={shareWritingToX}
+        disabled={sharing}
+        className="rounded-xl bg-gray-900 py-3 font-bold text-white hover:bg-gray-800 disabled:opacity-50"
+      >
+        {sharing ? "Xを開いています..." : xShareRewarded ? "𝕏 Xで共有（特典受取済み）" : "𝕏 Xで共有（+10pt）"}
+      </button>
+
+      <button
+        onClick={() => {
+
+          setShowEvolutionScreen(false)
+
+          setShowFinishModal(false)
+          clearSavedTimer()
+          setInputWords(0)
+          setLastWritingLogId(null)
+          setShowPostModal(false)
+
+          setBungou(null)
+          setShowBadgeModal(false)
+          setEarnedBadge(null)
+          setEarnedBadgesQueue([])
+fetchBungou()
+        }}
+        className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl"
+      >
+        ▶ 次へ
+      </button>
+
+    </div>
+
+  </div>
+
+</FixedOverlay>
+)}
+
+{/* 通常終了・進化時共通の投稿モーダル */}
       {showPostModal && (
 
-<div
-className="
-fixed
-inset-0
-bg-black/50
-flex
-items-center
-justify-center
-z-50
-"
->
+<FixedOverlay className="fixed inset-0 z-[400] flex items-center justify-center bg-black/60 p-4">
 
 <div
 className="
@@ -1775,145 +1926,10 @@ rounded-lg
 
 </div>
 
-</div>
+</FixedOverlay>
 
 )}
 
-    </div>
-
-  </div>
-
-</div>
-
-)}
-
-{/* 🌟 進化画面 */}
-{showEvolutionScreen && (
-
-<div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[130]">
-
-  {/* 🎊 紙吹雪 */}
-  <Confetti
-    width={window.innerWidth}
-    height={window.innerHeight}
-    recycle={false}
-    numberOfPieces={
-      evolutionStage === 3
-        ? 700
-        : 300
-    }
-  />
-
-  <div
-    className={`
-      rounded-3xl
-      p-8
-      w-[380px]
-      text-center
-      shadow-2xl
-
-      ${
-        evolutionStage === 1
-          ? "bg-yellow-100"
-
-        : evolutionStage === 2
-          ? "bg-blue-100"
-
-          : "bg-pink-100"
-      }
-    `}
-  >
-
-    {/* タイトル */}
-    <div className="text-2xl font-black mb-6 whitespace-pre-line">
-      {evolutionTitle}
-    </div>
-
-    {/* ブンゴウ画像 */}
-    <img
-  src={getBungouImage(evolutionStage)}
-  width={140}
-  alt={`${species?.name || "ブンゴウ"}の進化後の姿`}
-  className="
-    mx-auto
-    mb-6
-    animate-bounce
-  "
-/>
-
-    {/* メッセージ */}
-    <div className="mb-6 whitespace-pre-line text-gray-700">
-      {evolutionMessage}
-    </div>
-
-    {/* 成長によって解放された図鑑プロフィールへの導線 */}
-    {bungou?.species_id && (
-      <div className="mb-5 rounded-2xl border border-[#ead5b7] bg-white/80 px-4 py-4 text-[#694b38]">
-        <p className="text-sm font-bold">
-          {evolutionStage === 1
-            ? "📖 ブンゴウ図鑑にプロフィールが登録されました！"
-            : evolutionStage === 2
-              ? "📖 図鑑のセミプロ期プロフィールが解放されました！"
-              : "📖 図鑑のデビュー期プロフィールが解放されました！"}
-        </p>
-        <p className="mt-2 text-xs text-[#907b68]">成長したブンゴウの情報を確認できます。</p>
-        <Link
-          href={`/album/${bungou.species_id}`}
-          className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-[#d78f57] px-5 py-2 text-sm font-bold text-white hover:bg-[#c58049]"
-        >
-          解放されたプロフィールを見る →
-        </Link>
-      </div>
-    )}
-
-    {/* EXP */}
-    <div className="text-4xl font-black mb-6 text-yellow-500">
-      +{earnedExp} EXP
-    </div>
-
-    {/* ボタン */}
-    <div className="flex flex-col gap-3">
-
-      <button
-        className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-xl"
-      >
-        🎥 EXPを倍もらう
-      </button>
-
-      <button
-        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl"
-      >
-        📢 今日の執筆活動を共有する
-      </button>
-
-      <button
-        onClick={() => {
-
-          setShowEvolutionScreen(false)
-
-          setShowFinishModal(false)
-          clearSavedTimer()
-          setInputWords(0)
-          setLastWritingLogId(null)
-          setIsXRewarded(false)
-
-          setBungou(null)
-          setShowBadgeModal(false)
-          setEarnedBadge(null)
-          setEarnedBadgesQueue([])
-fetchBungou()
-        }}
-        className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl"
-      >
-        ▶ 次へ
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
-)}
 
 {showBadgeModal && earnedBadge && (
 
@@ -2044,7 +2060,7 @@ onClick={() => {
         <button
           onClick={() => {
             if (!selectedRecoveryDate) {
-              alert("復旧する日を選択してください。")
+              toast.error("復旧する日を選択してください。")
               return
             }
 

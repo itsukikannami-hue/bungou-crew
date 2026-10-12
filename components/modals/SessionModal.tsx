@@ -10,15 +10,15 @@ interface SessionModalProps {
 }
 
 export default function SessionModal({ user, duration, setShowModal }: SessionModalProps) {
-  console.log("SessionModal表示", user, duration)
+  void 0
   const [words, setWords] = useState(0)
 
   const saveSession = async () => {
 
-    console.log("saveSession開始")
+    void 0
   
     if (!user) {
-      console.log("userなし")
+      void 0
       return
     }
   
@@ -32,15 +32,15 @@ export default function SessionModal({ user, duration, setShowModal }: SessionMo
         }
       ])
   
-    console.log("insert結果 data:", data)
-    console.log("insert結果 error:", error)
+    void 0
+    void 0
   
     setShowModal(false)
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40">
-      <div className="bg-white p-8 rounded-xl flex flex-col gap-4 items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-3 sm:p-4">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white p-4 sm:p-8 rounded-xl flex flex-col gap-4 items-center">
 
         <h2 className="text-xl font-bold">
           執筆セッション終了！
@@ -56,7 +56,7 @@ export default function SessionModal({ user, duration, setShowModal }: SessionMo
 
 <button
   onClick={() => {
-    console.log("保存ボタン押された")
+    void 0
     saveSession()
   }}
   className="bg-blue-500 text-white px-4 py-2 rounded"
